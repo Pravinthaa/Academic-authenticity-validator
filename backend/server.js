@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
@@ -21,6 +22,16 @@ app.use(express.json());
 const institutionRoutes = require('./routes/institutionRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/institutions', institutionRoutes);
+
+// Dev-only routes (DB viewer)
+if (process.env.NODE_ENV === 'development') {
+  const devRoutes = require('./routes/devRoutes');
+  app.use('/api/dev', devRoutes);
+  // Serve the visual DB explorer HTML page
+  app.get('/db-explorer', (req, res) => {
+    res.sendFile(path.join(__dirname, 'db-explorer.html'));
+  });
+}
 
 // Error Handler Middleware
 app.use(errorHandler);
