@@ -1,0 +1,28 @@
+{
+  "name": "authenticity-validator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pravinthaa/Academic-authenticity-validator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pravinthaa/Academic-authenticity-validator/issues"
+  },
+  "homepage": "https://github.com/Pravinthaa/Academic-authenticity-validator#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

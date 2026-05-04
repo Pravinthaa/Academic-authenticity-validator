@@ -44,13 +44,57 @@ const certificateSchema = new mongoose.Schema(
       enum: ['active', 'revoked'],
       default: 'active',
     },
+    // File upload metadata
+    filePath: {
+      type: String,
+    },
+    fileName: {
+      type: String,
+    },
+    mimeType: {
+      type: String,
+    },
+    fileSize: {
+      type: Number,
+    },
+    // Verification & Tampering Detection
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'suspicious', 'fraud'],
+      default: 'pending',
+    },
+    tamperFlags: {
+      type: [{
+        type: String,
+        enum: ['signature_mismatch', 'seal_forgery', 'text_alteration', 'duplicate_detected', 'date_inconsistency']
+      }],
+      default: [],
+    },
+    ocrData: {
+      extractedText: String,
+      confidence: Number,
+      extractedAt: Date,
+    },
+    // Revocation info
+    revokedAt: Date,
+    revocationReason: String,
+    // Blockchain/IPFS integration
     ipfsHash: {
-      type: String, // Future-proofing for blockchain integration
+      type: String,
+    },
+    blockchainHash: {
+      type: String,
     }
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for performance
+certificateSchema.index({ certificateId: 1 });
+certificateSchema.index({ rollNumber: 1, institution: 1 });
+certificateSchema.index({ createdAt: -1 });
+certificateSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Certificate', certificateSchema);
