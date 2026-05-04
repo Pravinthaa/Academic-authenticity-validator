@@ -5,6 +5,7 @@ const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
+const certificateRoutes = require('./routes/certificateRoutes');
 
 // Load env vars
 dotenv.config();
@@ -17,11 +18,13 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 const institutionRoutes = require('./routes/institutionRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/institutions', institutionRoutes);
+app.use('/api/certificates', certificateRoutes);
 
 // Dev-only routes (DB viewer)
 if (process.env.NODE_ENV === 'development') {
@@ -33,12 +36,15 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Error Handler Middleware
 app.use(errorHandler);
 
 // Main Route
 app.get('/', (req, res) => {
-  res.send('VERI-CHAIN API is running...');
+  res.send('Authenticity Validator for Academia API is running...');
 });
 
 const PORT = process.env.PORT || 5000;

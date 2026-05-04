@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend"
   },
   "repository": {
     "type": "git",
@@ -17,5 +21,8 @@
   "bugs": {
     "url": "https://github.com/Pravinthaa/Academic-authenticity-validator/issues"
   },
-  "homepage": "https://github.com/Pravinthaa/Academic-authenticity-validator#readme"
+  "homepage": "https://github.com/Pravinthaa/Academic-authenticity-validator#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }

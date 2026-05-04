@@ -12,16 +12,17 @@ const verificationLogSchema = new mongoose.Schema(
     queryValue: {
       type: String,
       required: [true, 'Please provide the queried value'],
+      index: true,
     },
     queryType: {
       type: String,
-      enum: ['certificateId', 'rollNumber'],
+      enum: ['certificateId', 'rollNumber', 'user_action', 'upload'],
       required: true,
     },
     // Result of the verification
     result: {
       type: String,
-      enum: ['found', 'not_found', 'revoked'],
+      enum: ['found', 'not_found', 'revoked', 'uploaded', 'updated', 'deleted', 'verified', 'suspicious', 'fraud'],
       required: true,
     },
     // Who performed the verification (optional — public verifiers may not be logged in)
@@ -38,14 +39,37 @@ const verificationLogSchema = new mongoose.Schema(
     verifierOrganisation: {
       type: String,
     },
+    // Additional metadata
+    metadata: {
+      type: Map,
+      of: String,
+      default: new Map(),
+    },
+    // Risk assessment if applicable
+    riskScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0
+    },
+    // Tamper flags if detected
+    tamperFlags: [{
+      type: String,
+      enum: ['signature_mismatch', 'seal_forgery', 'text_alteration', 'duplicate_detected', 'date_inconsistency']
+    }]
   },
   {
     timestamps: true,
   }
 );
 
-// Index for fast lookups on queryValue
+// Indexes for fast lookups on queryValue and date
 verificationLogSchema.index({ queryValue: 1 });
 verificationLogSchema.index({ createdAt: -1 });
+verificationLogSchema.index({ verifiedBy: 1, createdAt: -1 });
+verificationLogSchema.index({ result: 1, createdAt: -1 });
+verificationLogSchema.index({ certificate: 1 });
+
+module.exports = mongoose.model('VerificationLog', verificationLogSchema);
 
 module.exports = mongoose.model('VerificationLog', verificationLogSchema);
