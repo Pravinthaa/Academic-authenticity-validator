@@ -1,0 +1,21 @@
+{
+  "name": "authenticity-validator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pravinthaa/Academic-authenticity-validator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pravinthaa/Academic-authenticity-validator/issues"
+  },
+  "homepage": "https://github.com/Pravinthaa/Academic-authenticity-validator#readme"
+}
