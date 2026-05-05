@@ -15,17 +15,29 @@ const SIDEBAR_ITEMS = [
 ];
 
 const StatCard = ({ title, value, icon: Icon, color, sub }) => (
-  <div className="stat-card" style={{ '--stat-color': color }}>
-    <div className="flex justify-between items-start mb-3">
+  <div style={{
+    background: 'rgba(255,255,255,0.03)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '16px',
+    padding: '24px',
+    transition: 'all 0.3s ease'
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
       <div>
-        <p className="text-sm text-secondary mb-1">{title}</p>
-        <p style={{ fontSize: '1.75rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>{value}</p>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '4px', letterSpacing: '0.5px' }}>{title}</p>
+        <p style={{ fontSize: '28px', fontWeight: 700, color: '#fff', fontFamily: 'Inter, sans-serif' }}>{value}</p>
       </div>
-      <div style={{ padding: '0.6rem', borderRadius: 10, background: `${color}18`, color }}>
+      <div style={{
+        padding: '12px',
+        borderRadius: '12px',
+        background: `${color}20`,
+        color: color
+      }}>
         <Icon size={20} />
       </div>
     </div>
-    {sub && <p className="text-xs text-muted">{sub}</p>}
+    {sub && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{sub}</p>}
   </div>
 );
 
@@ -33,7 +45,7 @@ const UniversityDashboard = () => {
   const { token, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [singleData, setSingleData] = useState({
-    studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: ''
+    studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: ''
   });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -46,7 +58,7 @@ const UniversityDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Certificate recorded on VERI-CHAIN!');
-      setSingleData({ studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: '' });
+      setSingleData({ studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: '' });
     } catch (err) {
       toast.error(err.response?.data?.error || 'Upload failed');
     } finally {
@@ -74,96 +86,289 @@ const UniversityDashboard = () => {
   };
 
   const field = (label, key, type = 'text', placeholder = '') => (
-    <div className="form-group" style={{ marginBottom: '1rem' }}>
-      <label className="form-label">{label}</label>
+    <div style={{ marginBottom: '16px' }}>
+      <label style={{
+        display: 'block',
+        marginBottom: '6px',
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '13px',
+        fontWeight: 500,
+        letterSpacing: '0.3px'
+      }}>{label}</label>
       <input
         type={type}
-        className="form-input"
         placeholder={placeholder}
         required
         value={singleData[key]}
         onChange={(e) => setSingleData({ ...singleData, [key]: e.target.value })}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '8px',
+          color: '#fff',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '14px',
+          transition: 'all 0.3s ease',
+          outline: 'none'
+        }}
+        onFocus={(e) => {
+          e.target.style.borderColor = '#f97316';
+          e.target.style.boxShadow = '0 0 0 2px rgba(249, 115, 22, 0.2)';
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+          e.target.style.boxShadow = 'none';
+        }}
       />
     </div>
   );
 
   const Sidebar = (
     <>
-      <div className="sidebar-header">
-        <span className="sidebar-badge university"><ShieldCheck size={12} /> Verified Institution</span>
-        <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>{user?.name || 'University Portal'}</p>
-        <p className="text-xs text-muted mt-1">{user?.email}</p>
+      <div style={{
+        padding: '0 20px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        marginBottom: '16px'
+      }}>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          fontSize: '11px',
+          fontWeight: 600,
+          border: '1px solid rgba(249, 115, 22, 0.3)',
+          background: 'rgba(249, 115, 22, 0.08)',
+          color: '#f97316',
+          marginBottom: '8px'
+        }}>
+          <ShieldCheck size={12} /> Verified Institution
+        </span>
+        <p style={{ fontWeight: 600, fontSize: '15px', color: '#fff', marginBottom: '4px' }}>{user?.name || 'University Portal'}</p>
+        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{user?.email}</p>
       </div>
 
-      <div className="sidebar-nav">
-        <p className="sidebar-section-title">Navigation</p>
+      <div style={{ padding: '0 12px' }}>
+        <p style={{
+          fontSize: '10px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          color: 'rgba(255,255,255,0.4)',
+          padding: '12px 14px 4px'
+        }}>Navigation</p>
         {SIDEBAR_ITEMS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            className={`sidebar-nav-item ${activeTab === id ? 'active' : ''}`}
             onClick={() => setActiveTab(id)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              borderRadius: '8px',
+              color: activeTab === id ? '#f97316' : 'rgba(255,255,255,0.6)',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              background: activeTab === id ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
+              width: '100%',
+              textAlign: 'left',
+              marginBottom: '4px',
+              border: activeTab === id ? '1px solid rgba(249, 115, 22, 0.2)' : 'none'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== id) {
+                e.target.style.background = 'rgba(255,255,255,0.05)';
+                e.target.style.color = '#fff';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== id) {
+                e.target.style.background = 'transparent';
+                e.target.style.color = 'rgba(255,255,255,0.6)';
+              }
+            }}
           >
             <Icon size={17} /> {label}
           </button>
         ))}
       </div>
 
-      <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-glass)', marginTop: 'auto' }}>
-        <div className="glass-panel p-3" style={{ borderRadius: 10 }}>
-          <p className="text-xs text-secondary mb-1">Need help?</p>
-          <p className="text-xs text-muted">Check the CSV template format before bulk uploads.</p>
+      <div style={{
+        padding: '16px 20px',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        marginTop: 'auto'
+      }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '10px',
+          padding: '12px'
+        }}>
+          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}>Need help?</p>
+          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Check the CSV template format before bulk uploads.</p>
         </div>
       </div>
     </>
   );
 
   return (
-    <DashboardLayout sidebar={Sidebar}>
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="animate-fade-in">
-          <div className="page-header">
-            <div>
-              <h1>Board Portal</h1>
-              <p>Welcome back, {user?.name}. Manage board exam records.</p>
+    <div style={{
+      display: 'flex',
+      minHeight: '100vh',
+      background: '#07070d',
+      color: '#fff',
+      fontFamily: 'Inter, sans-serif'
+    }}>
+      <aside style={{
+        width: '280px',
+        background: 'rgba(7,7,13,0.9)',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(12px)',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '24px 0',
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        overflowY: 'auto'
+      }}>
+        {Sidebar}
+      </aside>
+
+      <main style={{
+        flex: 1,
+        padding: '32px 40px',
+        overflowY: 'auto'
+      }}>
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div style={{ animation: 'fadeIn 0.5s ease' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '32px',
+              paddingBottom: '24px',
+              borderBottom: '1px solid rgba(255,255,255,0.08)'
+            }}>
+              <div>
+                <h1 style={{
+                  fontSize: '32px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  marginBottom: '8px',
+                  fontFamily: 'Inter, sans-serif'
+                }}>University Portal</h1>
+                <p style={{
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.6)',
+                  margin: 0
+                }}>Welcome back, {user?.name}. Manage your graduate records.</p>
+              </div>
+              <button
+                onClick={() => setActiveTab('single')}
+                style={{
+                  background: '#f97316',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '12px 24px',
+                  fontSize: '13px',
+                  letterSpacing: '1px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  transition: 'opacity 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => e.target.style.opacity = 0.85}
+                onMouseLeave={(e) => e.target.style.opacity = 1}
+              >
+                <FilePlus size={16} /> Issue Certificate
+              </button>
             </div>
-            <button className="btn btn-primary" onClick={() => setActiveTab('single')}>
-              <FilePlus size={16} /> Issue Certificate
-            </button>
-          </div>
 
-          <div className="grid grid-cols-3 gap-5 mb-8">
-            <StatCard title="Total Issued" value="1,248" icon={GraduationCap} color="#00f0ff" sub="All-time certificates" />
-            <StatCard title="This Month" value="84" icon={CheckCircle2} color="#10b981" sub="Issued in March 2025" />
-            <StatCard title="Pending Review" value="3" icon={Clock} color="#f59e0b" sub="Awaiting confirmation" />
-          </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '20px',
+              marginBottom: '32px'
+            }}>
+              <StatCard title="Total Issued" value="1,248" icon={GraduationCap} color="#f97316" sub="All-time certificates" />
+              <StatCard title="This Month" value="84" icon={CheckCircle2} color="#10b981" sub="Issued in March 2025" />
+              <StatCard title="Pending Review" value="3" icon={Clock} color="#f59e0b" sub="Awaiting confirmation" />
+            </div>
 
-          <div className="glass-card p-6">
-            <h2 className="text-xl mb-4" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Clock size={18} style={{ color: 'var(--accent-primary)' }} /> Recent Issuances
-            </h2>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                    {['Student', 'Roll No.', 'School', 'Year', 'Total Marks', 'Status'].map(h => (
-                      <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '16px',
+              padding: '24px'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#fff'
+              }}>
+                <Clock size={18} style={{ color: '#f97316' }} /> Recent Issuances
+              </h2>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '14px',
+                  color: '#fff'
+                }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      {['Student', 'Roll No.', 'Course', 'Year', 'Grade', 'Status'].map(h => (
+                        <th key={h} style={{
+                          padding: '12px 16px',
+                          textAlign: 'left',
+                          color: 'rgba(255,255,255,0.5)',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px'
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
                 <tbody>
                   {[
-                    { name: 'THIRUVARASAN R K', roll: '6150916', school: 'C E O A MATRIC. HR. SEC. SCHOOL', year: 2024, marks: '589', status: 'Recorded' },
-                    { name: 'ARUN KUMAR S', roll: '6150917', school: 'C E O A MATRIC. HR. SEC. SCHOOL', year: 2024, marks: '545', status: 'Recorded' },
-                    { name: 'RAHUL MENON',  roll: '882910', school: 'Govt Model Boys HSS', year: 2024, marks: '1180', status: 'Recorded' },
+                    { name: 'Anya Sharma', roll: 'CS22-001', course: 'B.Sc CS', year: 2024, grade: '9.2', status: 'Recorded' },
+                    { name: 'Rohan Mehta', roll: 'EC22-014', course: 'B.E EEE', year: 2024, grade: '8.7', status: 'Recorded' },
+                    { name: 'Priya Nair',  roll: 'ME22-031', course: 'B.E Mech', year: 2024, grade: '7.9', status: 'Recorded' },
                   ].map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: 500 }}>{r.name}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.roll}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.school}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.year}</td>
-                      <td style={{ padding: '0.75rem' }}>{r.marks}</td>
-                      <td style={{ padding: '0.75rem' }}><span className="badge badge-success">{r.status}</span></td>
+                      <td style={{ padding: '12px 16px', fontWeight: 500, color: '#fff' }}>{r.name}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.roll}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.course}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.year}</td>
+                      <td style={{ padding: '12px 16px', color: '#fff' }}>{r.grade}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          color: '#10b981',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>{r.status}</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -175,35 +380,105 @@ const UniversityDashboard = () => {
 
       {/* Single Issue Tab */}
       {activeTab === 'single' && (
-        <div className="animate-fade-in">
-          <div className="page-header">
+        <div style={{ animation: 'fadeIn 0.5s ease' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '32px',
+            paddingBottom: '24px',
+            borderBottom: '1px solid rgba(255,255,255,0.08)'
+          }}>
             <div>
-              <h1>Issue Certificate</h1>
-              <p>Record a single student's certificate on the chain.</p>
+              <h1 style={{
+                fontSize: '32px',
+                fontWeight: 700,
+                color: '#fff',
+                marginBottom: '8px',
+                fontFamily: 'Inter, sans-serif'
+              }}>Issue Certificate</h1>
+              <p style={{
+                fontSize: '14px',
+                color: 'rgba(255,255,255,0.6)',
+                margin: 0
+              }}>Record a single student's certificate on the chain.</p>
             </div>
           </div>
 
-          <div className="glass-card p-8" style={{ maxWidth: 700 }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '700px'
+          }}>
             <form onSubmit={handleSingleSubmit}>
-              <div className="grid grid-cols-2 gap-4">
-                {field('Student Full Name', 'studentName', 'text', 'e.g. THIRUVARASAN R K')}
-                {field('Examination Roll No.', 'rollNumber', 'text', 'e.g. 6150916')}
-                {field('Permanent Register No.', 'registerNumber', 'text', 'e.g. 2313150825')}
-                {field('School Name', 'schoolName', 'text', 'e.g. C E O A MATRIC. HR. SEC. SCHOOL')}
-                {field('Year of Passing', 'graduationYear', 'number', '2024')}
-                {field('Total Marks Obtained', 'totalMarks', 'number', 'e.g. 589')}
-                {field('Certificate Serial No.', 'certificateId', 'text', 'e.g. 35141174')}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px'
+              }}>
+                {field('Student Full Name', 'studentName', 'text', 'e.g. Rahul Kumar')}
+                {field('Roll / Registration No.', 'rollNumber', 'text', 'e.g. CS2024-019')}
+                {field('Course / Degree', 'course', 'text', 'e.g. B.Sc Computer Science')}
+                {field('Graduation Year', 'graduationYear', 'number', '2024')}
+                {field('Grade / CGPA', 'grade', 'text', 'e.g. 8.5 / A+')}
+                {field('Certificate Unique ID', 'certificateId', 'text', 'e.g. CERT-2024-CS-001')}
               </div>
 
-              <div style={{ height: '1px', background: 'var(--border-glass)', margin: '1.5rem 0' }} />
-              <div className="flex gap-3">
-                <button type="submit" className="btn btn-primary" disabled={uploading}>
+              <div style={{
+                height: '1px',
+                background: 'rgba(255,255,255,0.08)',
+                margin: '24px 0'
+              }} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  style={{
+                    background: '#f97316',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: uploading ? 'not-allowed' : 'pointer',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: uploading ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => !uploading && (e.target.style.opacity = 0.85)}
+                  onMouseLeave={(e) => !uploading && (e.target.style.opacity = 1)}
+                >
                   {uploading ? 'Recording...' : <><ShieldCheck size={16} /> Record on VERI-CHAIN</>}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() =>
-                  setSingleData({ studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: '' })
-                }>
-                  Clear
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.8)',
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(255,255,255,0.05)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.2)';
+                  }}
+                >
+                  Cancel
                 </button>
               </div>
             </form>
@@ -213,42 +488,146 @@ const UniversityDashboard = () => {
 
       {/* Bulk Upload Tab */}
       {activeTab === 'bulk' && (
-        <div className="animate-fade-in">
-          <div className="page-header">
+        <div style={{ animation: 'fadeIn 0.5s ease' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '32px',
+            paddingBottom: '24px',
+            borderBottom: '1px solid rgba(255,255,255,0.08)'
+          }}>
             <div>
-              <h1>Bulk Upload</h1>
-              <p>Upload a CSV file to record multiple certificates at once.</p>
+              <h1 style={{
+                fontSize: '32px',
+                fontWeight: 700,
+                color: '#fff',
+                marginBottom: '8px',
+                fontFamily: 'Inter, sans-serif'
+              }}>Bulk Upload</h1>
+              <p style={{
+                fontSize: '14px',
+                color: 'rgba(255,255,255,0.6)',
+                margin: 0
+              }}>Upload a CSV file to record multiple certificates at once.</p>
             </div>
           </div>
 
-          <div className="glass-card p-8" style={{ maxWidth: 600 }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '600px'
+          }}>
             <form onSubmit={handleBulkSubmit}>
-              <input type="file" accept=".csv" id="csv-upload" className="hidden"
-                onChange={(e) => setFile(e.target.files[0])} />
-              <label htmlFor="csv-upload" className="upload-zone" style={{ display: 'block', cursor: 'pointer', marginBottom: '1.5rem' }}>
-                <UploadCloud size={44} style={{ color: 'var(--accent-primary)', margin: '0 auto 1rem' }} />
-                <h3 style={{ fontSize: '1.05rem', marginBottom: '0.4rem' }}>
+              <input
+                type="file"
+                accept=".csv"
+                id="csv-upload"
+                style={{ display: 'none' }}
+                onChange={(e) => setFile(e.target.files[0])}
+              />
+              <label
+                htmlFor="csv-upload"
+                style={{
+                  display: 'block',
+                  cursor: 'pointer',
+                  marginBottom: '24px',
+                  padding: '40px 20px',
+                  border: '2px dashed rgba(249, 115, 22, 0.3)',
+                  borderRadius: '12px',
+                  background: 'rgba(249, 115, 22, 0.02)',
+                  transition: 'all 0.3s',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.borderColor = '#f97316';
+                  e.target.style.background = 'rgba(249, 115, 22, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.borderColor = 'rgba(249, 115, 22, 0.3)';
+                  e.target.style.background = 'rgba(249, 115, 22, 0.02)';
+                }}
+              >
+                <UploadCloud size={44} style={{ color: '#f97316', margin: '0 auto 16px', display: 'block' }} />
+                <h3 style={{
+                  fontSize: '18px',
+                  marginBottom: '8px',
+                  color: '#fff',
+                  fontWeight: 600
+                }}>
                   {file ? file.name : 'Click to select CSV file'}
                 </h3>
-                <p className="text-sm text-muted">Required columns: studentName, rollNumber, registerNumber, schoolName, graduationYear, totalMarks, certificateId</p>
+                <p style={{
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.6)'
+                }}>Required columns: studentName, rollNumber, course, graduationYear, grade, certificateId</p>
               </label>
 
-              <div className="glass-panel p-4 mb-6" style={{ borderRadius: 10 }}>
-                <p className="text-xs text-secondary mb-2" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CSV Format Example</p>
-                <code style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontFamily: 'monospace', display: 'block', lineHeight: 1.8 }}>
-                  studentName,rollNumber,registerNumber,schoolName,graduationYear,totalMarks,certificateId<br/>
-                  John Doe,6150916,2313150825,C E O A SCHOOL,2024,589,35141174
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '10px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <p style={{
+                  fontSize: '11px',
+                  color: 'rgba(255,255,255,0.7)',
+                  marginBottom: '8px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>CSV Format Example</p>
+                <code style={{
+                  fontSize: '12px',
+                  color: '#f97316',
+                  fontFamily: 'monospace',
+                  display: 'block',
+                  lineHeight: 1.8,
+                  background: 'rgba(0,0,0,0.2)',
+                  padding: '8px',
+                  borderRadius: '6px'
+                }}>
+                  studentName,rollNumber,course,graduationYear,grade,certificateId<br/>
+                  John Doe,CS24-001,B.Sc CS,2024,8.5,CERT-001
                 </code>
               </div>
 
-              <button type="submit" className="btn btn-primary w-full" disabled={uploading || !file}>
+              <button
+                type="submit"
+                disabled={uploading || !file}
+                style={{
+                  width: '100%',
+                  background: '#f97316',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '14px 24px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: (uploading || !file) ? 'not-allowed' : 'pointer',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: (uploading || !file) ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => !(uploading || !file) && (e.target.style.opacity = 0.85)}
+                onMouseLeave={(e) => !(uploading || !file) && (e.target.style.opacity = 1)}
+              >
                 {uploading ? 'Processing...' : <><UploadCloud size={16} /> Upload & Record Batch</>}
               </button>
             </form>
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </main>
+  </div>
   );
 };
 

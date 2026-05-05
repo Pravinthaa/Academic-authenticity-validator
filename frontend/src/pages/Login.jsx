@@ -7,20 +7,24 @@ import { LogIn } from 'lucide-react';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, user } = useAuthStore();
+  const { login, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error('Please enter both email and password.');
+      return;
+    }
     const success = await login(email, password);
     if (success) {
-      toast.success('Successfully logged in');
-      // Get updated user from store
+      toast.success('Logged in successfully!');
       const currentUser = useAuthStore.getState().user;
       const dashboardLink = currentUser?.role === 'admin' ? '/admin/dashboard' : (currentUser?.role === 'institution' ? '/university' : '/verifier');
       navigate(dashboardLink);
     } else {
-      toast.error('Login failed. Please check credentials.');
+      const currentError = useAuthStore.getState().error;
+      toast.error(currentError || 'Login failed. Please check your credentials.');
     }
   };
 
