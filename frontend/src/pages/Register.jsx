@@ -14,7 +14,7 @@ const Register = () => {
     registrationNumber: ''
   });
   
-  const { register, isLoading } = useAuthStore();
+  const { register, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,14 +23,19 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error('Please fill in all required fields.');
+      return;
+    }
     const success = await register(formData);
     if (success) {
-      toast.success('Successfully registered');
+      toast.success('Account created successfully!');
       const currentUser = useAuthStore.getState().user;
       const dashboardLink = currentUser?.role === 'admin' ? '/admin/dashboard' : (currentUser?.role === 'institution' ? '/university' : '/verifier');
       navigate(dashboardLink);
     } else {
-      toast.error('Registration failed. Please check inputs.');
+      const currentError = useAuthStore.getState().error;
+      toast.error(currentError || 'Registration failed. Please try again.');
     }
   };
 

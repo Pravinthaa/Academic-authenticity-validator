@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { CheckCircle, AlertTriangle, XCircle, Loader, Search } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Loader, Search, Upload } from 'lucide-react';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 export default function CertificateVerifier() {
@@ -91,6 +91,7 @@ export default function CertificateVerifier() {
       case 'valid': return 'bg-green-500/10 border border-green-500/20 rounded-3xl overflow-hidden';
       case 'suspicious': return 'bg-yellow-500/10 border border-yellow-500/20 rounded-3xl overflow-hidden';
       case 'revoked': return 'bg-orange-500/10 border border-orange-500/20 rounded-3xl overflow-hidden';
+      case 'tampered': return 'bg-red-500/10 border border-red-500/20 rounded-3xl overflow-hidden';
       default: return 'bg-red-500/10 border border-red-500/20 rounded-3xl overflow-hidden';
     }
   };
@@ -99,6 +100,7 @@ export default function CertificateVerifier() {
     switch (status) {
       case 'valid': return <CheckCircle className="w-10 h-10 text-green-400" />;
       case 'suspicious': return <AlertTriangle className="w-10 h-10 text-yellow-400" />;
+      case 'tampered': return <XCircle className="w-10 h-10 text-red-400" />;
       default: return <XCircle className="w-10 h-10 text-red-400" />;
     }
   };
@@ -108,6 +110,7 @@ export default function CertificateVerifier() {
       case 'valid': return 'Verified Authentic';
       case 'suspicious': return 'Suspicious / Mismatch';
       case 'revoked': return 'Revoked Record';
+      case 'tampered': return 'Tampered Certificate';
       default: return 'Invalid / Forged';
     }
   };
@@ -272,6 +275,50 @@ export default function CertificateVerifier() {
                   </div>
                 </div>
               </div>
+
+                {result.status === 'tampered' && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-6 space-y-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-red-400 uppercase tracking-[0.2em] mb-2">Tampered Mock Details</p>
+                      <p className="text-sm text-red-200/90 leading-relaxed">
+                        Filename marker triggered the tampered mock response for this upload.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-black/25 rounded-2xl p-4 border border-white/5">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Institution</p>
+                        <p className="text-white font-medium">{result.institution?.name || 'Mock Institution'}</p>
+                      </div>
+                      <div className="bg-black/25 rounded-2xl p-4 border border-white/5">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Confidence</p>
+                        <p className="text-white font-medium">{Math.round((result.confidence || 0) * 100)}%</p>
+                      </div>
+                      <div className="bg-black/25 rounded-2xl p-4 border border-white/5">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Tamper Status</p>
+                        <p className="text-white font-medium">Flagged as tampered</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-black/25 rounded-2xl p-4 border border-white/5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-3">Mock Extracted Data</p>
+                      <div className="space-y-2">
+                        {Object.entries(result.aiExtractions || {}).map(([key, value]) => (
+                          <div key={key} className="flex items-center justify-between gap-4">
+                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="text-white font-medium text-right">{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {result.tamperDetails?.details && (
+                      <div className="text-sm text-red-200/90">
+                        <span className="font-bold text-red-300">Reason: </span>
+                        {result.tamperDetails.details}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               <div className="p-8 space-y-8">
                 {/* Comparison Grid */}
