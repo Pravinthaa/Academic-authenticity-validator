@@ -9,9 +9,9 @@ import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
 
 const SIDEBAR_ITEMS = [
-  { id: 'verify',  label: 'Verify Document',  icon: ScanLine },
+  { id: 'verify', label: 'Verify Document', icon: ScanLine },
   { id: 'history', label: 'Verification History', icon: History },
-  { id: 'help',    label: 'How It Works',     icon: HelpCircle },
+  { id: 'help', label: 'How It Works', icon: HelpCircle },
 ];
 
 const VerifierDashboard = () => {
@@ -35,27 +35,54 @@ const VerifierDashboard = () => {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const simulate = () => {
-    if (!selectedFile) return toast.error('Please upload a certificate first.');
+
+  const verifyCertificate = async () => {
+  if (!selectedFile) {
+    return toast.error('Please upload a certificate first.');
+  }
+
+  try {
     setIsLoading(true);
     setResult(null);
-    setTimeout(() => {
-      setIsLoading(false);
-      setResult({
-        status: 'verified',
-        ocrConfidence: 97.8,
-        details: {
-          studentName: 'THIRUVARASAN R K',
-          rollNumber: '6150916',
-          registerNumber: '2313150825',
-          schoolName: 'C E O A MATRIC. HR. SEC. SCHOOL',
-          graduationYear: 2024,
-          totalMarks: '589 / 600',
-          certificateId: '35141174',
+
+    const formData = new FormData();
+    formData.append("certificate", selectedFile); // 🔥 MUST match backend
+
+    const response = await axios.post(
+      "http://localhost:3000/api/certificates/verify",
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      });
-    }, 2600);
-  };
+      }
+    );
+
+    console.log("VERIFY RESPONSE:", response.data);
+
+    const res = response.data;
+
+    // 🔥 Map backend → UI
+    setResult({
+      status: res.status === 'valid' ? 'verified' : 'invalid',
+      ocrConfidence: Math.round((res.confidence || 0.9) * 100),
+      details: {
+        studentName: res.aiExtractions?.student_name,
+        registerNumber: res.aiExtractions?.register_number,
+        schoolName: res.aiExtractions?.school_name,
+        graduationYear: res.aiExtractions?.session_and_year,
+        totalMarks: res.aiExtractions?.total_marks,
+        certificateId: res.aiExtractions?.certificate_serial_no,
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    toast.error("Verification failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const Sidebar = (
     <>
@@ -121,7 +148,7 @@ const VerifierDashboard = () => {
                 <p className="text-sm text-muted">PDF, JPG, PNG supported (max 5 MB)</p>
               </div>
 
-              <button className="btn btn-primary w-full" onClick={simulate} disabled={isLoading}>
+              <button className="btn btn-primary w-full" onClick={verifyCertificate} disabled={isLoading}>
                 {isLoading
                   ? <><div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> Analyzing…</>
                   : <><ScanLine size={16} /> Verify Certificate</>}
