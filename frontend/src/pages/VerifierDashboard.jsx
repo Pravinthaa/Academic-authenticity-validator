@@ -45,13 +45,13 @@ const VerifierDashboard = () => {
         status: 'verified',
         ocrConfidence: 97.8,
         details: {
-          studentName: 'Anya Sharma',
-          rollNumber: 'CS22-001',
-          institution: 'Tech University',
-          course: 'B.Sc Computer Science',
+          studentName: 'THIRUVARASAN R K',
+          rollNumber: '6150916',
+          registerNumber: '2313150825',
+          schoolName: 'C E O A MATRIC. HR. SEC. SCHOOL',
           graduationYear: 2024,
-          grade: '9.2 CGPA',
-          certificateId: 'CERT-2024-CS-001',
+          totalMarks: '589 / 600',
+          certificateId: '35141174',
         }
       });
     }, 2600);
@@ -218,10 +218,10 @@ const VerifierDashboard = () => {
           </div>
           <div className="grid grid-cols-1 gap-4" style={{ maxWidth: 600 }}>
             {[
-              { step: '01', title: 'Upload Document', desc: 'Upload a certificate image (PDF/JPG/PNG). Our OCR engine extracts all text from the document.' },
-              { step: '02', title: 'AI Extraction', desc: 'The AI parses student name, roll number, course, institution, year, and grade from the document.' },
-              { step: '03', title: 'Chain Lookup', desc: 'Extracted data is cross-referenced against the immutable VERI-CHAIN certificate registry.' },
-              { step: '04', title: 'Result Returned', desc: 'A verified or flagged result is returned with confidence scores and full extracted details.' },
+              { step: '01', title: 'Upload Document', desc: 'Upload a Class 12 certificate image (PDF/JPG/PNG). Our OCR engine extracts all text from the document.' },
+              { step: '02', title: 'AI Extraction', desc: 'The AI parses student name, register number, school name, year, and total marks from the document.' },
+              { step: '03', title: 'Board Lookup', desc: 'Extracted data is cross-referenced against the specialized Class 12 Board database on VERI-CHAIN.' },
+              { step: '04', title: 'Result Returned', desc: 'A verified or flagged result is returned with confidence scores and full marksheet details.' },
             ].map(({ step, title, desc }) => (
               <div key={step} className="glass-card p-5 flex gap-4 items-start">
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', color: '#a78bfa', flexShrink: 0, width: 40 }}>{step}</div>

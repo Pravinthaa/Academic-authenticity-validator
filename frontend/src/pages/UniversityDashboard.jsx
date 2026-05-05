@@ -33,7 +33,7 @@ const UniversityDashboard = () => {
   const { token, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [singleData, setSingleData] = useState({
-    studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: ''
+    studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: ''
   });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -46,7 +46,7 @@ const UniversityDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Certificate recorded on VERI-CHAIN!');
-      setSingleData({ studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: '' });
+      setSingleData({ studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: '' });
     } catch (err) {
       toast.error(err.response?.data?.error || 'Upload failed');
     } finally {
@@ -124,8 +124,8 @@ const UniversityDashboard = () => {
         <div className="animate-fade-in">
           <div className="page-header">
             <div>
-              <h1>University Portal</h1>
-              <p>Welcome back, {user?.name}. Manage your graduate records.</p>
+              <h1>Board Portal</h1>
+              <p>Welcome back, {user?.name}. Manage board exam records.</p>
             </div>
             <button className="btn btn-primary" onClick={() => setActiveTab('single')}>
               <FilePlus size={16} /> Issue Certificate
@@ -146,23 +146,23 @@ const UniversityDashboard = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                    {['Student', 'Roll No.', 'Course', 'Year', 'Grade', 'Status'].map(h => (
+                    {['Student', 'Roll No.', 'School', 'Year', 'Total Marks', 'Status'].map(h => (
                       <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { name: 'Anya Sharma', roll: 'CS22-001', course: 'B.Sc CS', year: 2024, grade: '9.2', status: 'Recorded' },
-                    { name: 'Rohan Mehta', roll: 'EC22-014', course: 'B.E EEE', year: 2024, grade: '8.7', status: 'Recorded' },
-                    { name: 'Priya Nair',  roll: 'ME22-031', course: 'B.E Mech', year: 2024, grade: '7.9', status: 'Recorded' },
+                    { name: 'THIRUVARASAN R K', roll: '6150916', school: 'C E O A MATRIC. HR. SEC. SCHOOL', year: 2024, marks: '589', status: 'Recorded' },
+                    { name: 'ARUN KUMAR S', roll: '6150917', school: 'C E O A MATRIC. HR. SEC. SCHOOL', year: 2024, marks: '545', status: 'Recorded' },
+                    { name: 'RAHUL MENON',  roll: '882910', school: 'Govt Model Boys HSS', year: 2024, marks: '1180', status: 'Recorded' },
                   ].map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <td style={{ padding: '0.75rem', fontWeight: 500 }}>{r.name}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.roll}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.course}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.school}</td>
                       <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{r.year}</td>
-                      <td style={{ padding: '0.75rem' }}>{r.grade}</td>
+                      <td style={{ padding: '0.75rem' }}>{r.marks}</td>
                       <td style={{ padding: '0.75rem' }}><span className="badge badge-success">{r.status}</span></td>
                     </tr>
                   ))}
@@ -186,12 +186,13 @@ const UniversityDashboard = () => {
           <div className="glass-card p-8" style={{ maxWidth: 700 }}>
             <form onSubmit={handleSingleSubmit}>
               <div className="grid grid-cols-2 gap-4">
-                {field('Student Full Name', 'studentName', 'text', 'e.g. Rahul Kumar')}
-                {field('Roll / Registration No.', 'rollNumber', 'text', 'e.g. CS2024-019')}
-                {field('Course / Degree', 'course', 'text', 'e.g. B.Sc Computer Science')}
-                {field('Graduation Year', 'graduationYear', 'number', '2024')}
-                {field('Grade / CGPA', 'grade', 'text', 'e.g. 8.5 / A+')}
-                {field('Certificate Unique ID', 'certificateId', 'text', 'e.g. CERT-2024-CS-001')}
+                {field('Student Full Name', 'studentName', 'text', 'e.g. THIRUVARASAN R K')}
+                {field('Examination Roll No.', 'rollNumber', 'text', 'e.g. 6150916')}
+                {field('Permanent Register No.', 'registerNumber', 'text', 'e.g. 2313150825')}
+                {field('School Name', 'schoolName', 'text', 'e.g. C E O A MATRIC. HR. SEC. SCHOOL')}
+                {field('Year of Passing', 'graduationYear', 'number', '2024')}
+                {field('Total Marks Obtained', 'totalMarks', 'number', 'e.g. 589')}
+                {field('Certificate Serial No.', 'certificateId', 'text', 'e.g. 35141174')}
               </div>
 
               <div style={{ height: '1px', background: 'var(--border-glass)', margin: '1.5rem 0' }} />
@@ -200,7 +201,7 @@ const UniversityDashboard = () => {
                   {uploading ? 'Recording...' : <><ShieldCheck size={16} /> Record on VERI-CHAIN</>}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={() =>
-                  setSingleData({ studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: '' })
+                  setSingleData({ studentName: '', rollNumber: '', registerNumber: '', schoolName: '', graduationYear: '', totalMarks: '', certificateId: '' })
                 }>
                   Clear
                 </button>
@@ -229,14 +230,14 @@ const UniversityDashboard = () => {
                 <h3 style={{ fontSize: '1.05rem', marginBottom: '0.4rem' }}>
                   {file ? file.name : 'Click to select CSV file'}
                 </h3>
-                <p className="text-sm text-muted">Required columns: studentName, rollNumber, course, graduationYear, grade, certificateId</p>
+                <p className="text-sm text-muted">Required columns: studentName, rollNumber, registerNumber, schoolName, graduationYear, totalMarks, certificateId</p>
               </label>
 
               <div className="glass-panel p-4 mb-6" style={{ borderRadius: 10 }}>
                 <p className="text-xs text-secondary mb-2" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CSV Format Example</p>
                 <code style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontFamily: 'monospace', display: 'block', lineHeight: 1.8 }}>
-                  studentName,rollNumber,course,graduationYear,grade,certificateId<br/>
-                  John Doe,CS24-001,B.Sc CS,2024,8.5,CERT-001
+                  studentName,rollNumber,registerNumber,schoolName,graduationYear,totalMarks,certificateId<br/>
+                  John Doe,6150916,2313150825,C E O A SCHOOL,2024,589,35141174
                 </code>
               </div>
 

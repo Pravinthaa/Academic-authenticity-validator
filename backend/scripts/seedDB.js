@@ -24,29 +24,29 @@ const VerificationLog = require('../models/VerificationLog');
 
 const sampleUsers = [
   {
-    name: 'Super Admin',
+    name: 'Govt Admin',
     email: 'admin@verichain.io',
     password: 'Admin@1234',
     role: 'admin',
   },
   {
-    name: 'Anna University',
-    email: 'admin@annauniv.edu',
-    password: 'Instit@1234',
+    name: 'TN School Board',
+    email: 'admin@tnboard.edu.in',
+    password: 'Board@1234',
     role: 'institution',
     institutionDetails: {
-      organizationName: 'Anna University',
-      registrationNumber: 'AU-TN-1978-001',
+      organizationName: 'State Board of School Examinations, Tamilnadu',
+      registrationNumber: 'TNSB-2024-001',
     },
   },
   {
-    name: 'IIT Madras',
-    email: 'admin@iitm.ac.in',
-    password: 'Instit@5678',
+    name: 'Kerala School Board',
+    email: 'admin@keralaboard.edu.in',
+    password: 'Board@5678',
     role: 'institution',
     institutionDetails: {
-      organizationName: 'IIT Madras',
-      registrationNumber: 'IIT-MDR-1959-002',
+      organizationName: 'Kerala Board of Higher Secondary Education',
+      registrationNumber: 'KSEB-2024-002',
     },
   },
   {
@@ -55,96 +55,74 @@ const sampleUsers = [
     password: 'Verify@1234',
     role: 'verifier',
   },
-  {
-    name: 'Rajan Recruiter',
-    email: 'rajan@techcorp.com',
-    password: 'Verify@5678',
-    role: 'verifier',
-  },
 ];
 
 // Will be populated after users are inserted
 let institutionIds = {};
 
 const buildCertificates = () => [
-  // Anna University certificates
   {
-    institution: institutionIds['admin@annauniv.edu'],
-    studentName: 'Arun Kumar',
-    rollNumber: 'AU2020CS001',
-    course: 'B.E. Computer Science and Engineering',
+    institution: institutionIds['admin@tnboard.edu.in'],
+    studentName: 'THIRUVARASAN R K',
+    rollNumber: '6150916',
+    registerNumber: '2313150825',
+    emisId: '2010843333',
+    certificateSerialNo: '35141174',
+    sessionAndYear: 'MAR 2024',
+    dateOfBirth: new Date('2005-10-15'),
+    course: 'Higher Secondary Course (Class 12)',
+    schoolName: 'C E O A MATRIC. HR. SEC. SCHOOL, A. KOSAKULAM',
     graduationYear: 2024,
-    grade: '8.9 CGPA',
-    certificateId: 'CERT-AU-2024-CS-0001',
-    issueDate: new Date('2024-06-15'),
+    totalMarks: '0589',
+    tmrCode: 'M1145983 / 06.05.2024',
+    certificateId: '35141174',
+    issueDate: new Date('2024-05-06'),
     status: 'active',
+    hasPhoto: true,
+    hasCandidateSignature: true,
+    hasSecretarySignature: true
   },
   {
-    institution: institutionIds['admin@annauniv.edu'],
-    studentName: 'Meena Suresh',
-    rollNumber: 'AU2020EC002',
-    course: 'B.E. Electronics and Communication',
+    institution: institutionIds['admin@tnboard.edu.in'],
+    studentName: 'ARUN KUMAR S',
+    rollNumber: '6150917',
+    registerNumber: '2313150826',
+    emisId: '2010843334',
+    certificateSerialNo: '35141175',
+    sessionAndYear: 'MAR 2024',
+    dateOfBirth: new Date('2006-05-20'),
+    course: 'Higher Secondary Course (Class 12)',
+    schoolName: 'C E O A MATRIC. HR. SEC. SCHOOL, A. KOSAKULAM',
     graduationYear: 2024,
-    grade: '9.1 CGPA',
-    certificateId: 'CERT-AU-2024-EC-0002',
-    issueDate: new Date('2024-06-15'),
+    totalMarks: '0545',
+    tmrCode: 'M1145984 / 06.05.2024',
+    certificateId: '35141175',
+    issueDate: new Date('2024-05-06'),
     status: 'active',
+    hasPhoto: true,
+    hasCandidateSignature: true,
+    hasSecretarySignature: true
   },
   {
-    institution: institutionIds['admin@annauniv.edu'],
-    studentName: 'Vijay Anand',
-    rollNumber: 'AU2019ME003',
-    course: 'B.E. Mechanical Engineering',
-    graduationYear: 2023,
-    grade: '7.5 CGPA',
-    certificateId: 'CERT-AU-2023-ME-0003',
-    issueDate: new Date('2023-07-01'),
-    status: 'active',
-  },
-  {
-    institution: institutionIds['admin@annauniv.edu'],
-    studentName: 'Kavitha Rajan',
-    rollNumber: 'AU2019IT004',
-    course: 'B.Tech Information Technology',
-    graduationYear: 2023,
-    grade: '8.2 CGPA',
-    certificateId: 'CERT-AU-2023-IT-0004',
-    issueDate: new Date('2023-07-01'),
-    status: 'revoked', // Example of a revoked certificate
-  },
-  // IIT Madras certificates
-  {
-    institution: institutionIds['admin@iitm.ac.in'],
-    studentName: 'Siddharth Nair',
-    rollNumber: 'IITM2021CS001',
-    course: 'B.Tech Computer Science',
-    graduationYear: 2025,
-    grade: '9.6 CGPA',
-    certificateId: 'CERT-IITM-2025-CS-0001',
-    issueDate: new Date('2025-05-30'),
-    status: 'active',
-  },
-  {
-    institution: institutionIds['admin@iitm.ac.in'],
-    studentName: 'Lakshmi Priya',
-    rollNumber: 'IITM2020AI002',
-    course: 'M.Tech Artificial Intelligence',
+    institution: institutionIds['admin@keralaboard.edu.in'],
+    studentName: 'RAHUL MENON',
+    rollNumber: '882910',
+    registerNumber: 'KR-2024-9910',
+    emisId: 'KL-2010843',
+    certificateSerialNo: 'KSEB-2024-A1',
+    sessionAndYear: 'MAR 2024',
+    dateOfBirth: new Date('2006-01-12'),
+    course: 'Higher Secondary Course (Class 12)',
+    schoolName: 'Govt Model Boys HSS, Trivandrum',
     graduationYear: 2024,
-    grade: '9.3 CGPA',
-    certificateId: 'CERT-IITM-2024-AI-0002',
-    issueDate: new Date('2024-05-28'),
+    totalMarks: '1180',
+    tmrCode: 'KSEB-TMR-001',
+    certificateId: 'KSEB-2024-A1',
+    issueDate: new Date('2024-06-10'),
     status: 'active',
-  },
-  {
-    institution: institutionIds['admin@iitm.ac.in'],
-    studentName: 'Rahul Sharma',
-    rollNumber: 'IITM2019EE003',
-    course: 'B.Tech Electrical Engineering',
-    graduationYear: 2023,
-    grade: '8.7 CGPA',
-    certificateId: 'CERT-IITM-2023-EE-0003',
-    issueDate: new Date('2023-06-01'),
-    status: 'active',
+    hasPhoto: true,
+    hasCandidateSignature: true,
+    hasSecretarySignature: true
   },
 ];
 
@@ -211,38 +189,21 @@ const seed = async () => {
     const verificationLogs = [
       {
         certificate: insertedCerts[0]._id,
-        queryValue: 'CERT-AU-2024-CS-0001',
+        queryValue: '35141174',
         queryType: 'certificateId',
         result: 'found',
-        verifiedBy: verifierUser._id,
+        verifiedBy: null,
         ipAddress: '192.168.1.10',
-        verifierOrganisation: 'HR Firm Pvt. Ltd.',
+        verifierOrganisation: 'State Recruitment Cell',
       },
       {
-        certificate: insertedCerts[4]._id,
-        queryValue: 'IITM2021CS001',
+        certificate: insertedCerts[1]._id,
+        queryValue: '6150917',
         queryType: 'rollNumber',
         result: 'found',
         verifiedBy: null,
         ipAddress: '203.0.113.42',
-        verifierOrganisation: 'Tech Corp',
-      },
-      {
-        certificate: null,
-        queryValue: 'FAKE-CERT-9999',
-        queryType: 'certificateId',
-        result: 'not_found',
-        verifiedBy: null,
-        ipAddress: '198.51.100.7',
-      },
-      {
-        certificate: insertedCerts[3]._id,
-        queryValue: 'CERT-AU-2023-IT-0004',
-        queryType: 'certificateId',
-        result: 'revoked',
-        verifiedBy: verifierUser._id,
-        ipAddress: '192.168.2.55',
-        verifierOrganisation: 'HR Firm Pvt. Ltd.',
+        verifierOrganisation: 'Employer Alpha',
       },
     ];
 
@@ -258,9 +219,8 @@ const seed = async () => {
     console.log(`  Verify Logs   : ${insertedLogs.length}`);
     console.log('\n  Test Credentials:');
     console.log('  ┌─ Admin       admin@verichain.io    /  Admin@1234');
-    console.log('  ├─ Institution admin@annauniv.edu    /  Instit@1234');
-    console.log('  ├─ Institution admin@iitm.ac.in      /  Instit@5678');
-    console.log('  └─ Verifier   priya@hrfirm.com      /  Verify@1234');
+    console.log('  ├─ Board TN    admin@tnboard.edu.in  /  Board@1234');
+    console.log('  └─ Board KL    admin@keralaboard.edu.in / Board@5678');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     await mongoose.connection.close();

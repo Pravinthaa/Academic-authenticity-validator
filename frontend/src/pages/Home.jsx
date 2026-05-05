@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import InteractiveSphere from '../components/InteractiveSphere';
 import AbstractFigure from '../components/AbstractFigure';
 import WireframeSphere from '../components/WireframeSphere';
+import useAuthStore from '../store/authStore';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const [scrollProgress, setScrollProgress] = React.useState(0);
   const sectionRef = React.useRef(null);
 
@@ -42,12 +44,32 @@ const Home = () => {
           AUTHENTICITY VALIDATOR
         </div>
         <div style={{ display: 'flex', gap: 32 }}>
-          {['VERIFY', 'HOW IT WORKS', 'TECH STACK', 'ABOUT'].map(l => (
+          {['HOW IT WORKS', 'TECH STACK', 'ABOUT'].map(l => (
             <span key={l} style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', cursor: 'pointer', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = '#f97316'}
               onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.45)'}
             >{l}</span>
           ))}
+          {isAuthenticated ? (
+            <>
+              <span 
+                onClick={() => {
+                  const link = user?.role === 'admin' ? '/admin/dashboard' : (user?.role === 'institution' ? '/university' : '/verifier');
+                  navigate(link);
+                }}
+                style={{ fontSize: 11, letterSpacing: 2, color: '#f97316', fontWeight: 'bold', cursor: 'pointer' }}
+              >DASHBOARD</span>
+              <span 
+                onClick={() => { logout(); navigate('/'); }}
+                style={{ fontSize: 11, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', cursor: 'pointer' }}
+              >LOGOUT</span>
+            </>
+          ) : (
+            <span 
+              onClick={() => navigate('/login')}
+              style={{ fontSize: 11, letterSpacing: 2, color: '#f97316', fontWeight: 'bold', cursor: 'pointer' }}
+            >LOGIN</span>
+          )}
         </div>
       </nav>
 

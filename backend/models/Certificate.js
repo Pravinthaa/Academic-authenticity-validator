@@ -13,20 +13,74 @@ const certificateSchema = new mongoose.Schema(
     },
     rollNumber: {
       type: String,
-      required: [true, 'Please add a roll number'],
+      required: [true, 'Please add a roll number (Examination Roll No)'],
       index: true,
+    },
+    registerNumber: {
+      type: String,
+      required: [true, 'Please add the permanent register number'],
+      unique: true,
+      index: true
+    },
+    emisId: {
+      type: String,
+      required: [true, 'Please add the EMIS ID number'],
+      index: true
+    },
+    certificateSerialNo: {
+      type: String,
+      required: [true, 'Please add the certificate serial number (SL NO)'],
+      unique: true,
+      index: true
+    },
+    sessionAndYear: {
+      type: String,
+      required: [true, 'Please add the session and year of issue (e.g. MAR 2024)'],
+    },
+    dateOfBirth: {
+      type: Date,
+      required: [true, 'Please add date of birth'],
     },
     course: {
       type: String,
-      required: [true, 'Please add a course name'],
+      default: 'Higher Secondary Course (Class 12)',
+    },
+    schoolName: {
+      type: String,
+      required: [true, 'Please add school name'],
+    },
+    groupCode: {
+      type: String,
+      default: '2503 / GENERAL EDUCATION'
+    },
+    mediumOfInstruction: {
+      type: String,
+      default: 'ENGLISH'
+    },
+    tmrCode: {
+      type: String,
+      default: 'N/A'
     },
     graduationYear: {
       type: Number,
-      required: [true, 'Please add graduation year'],
+      required: [true, 'Please add year of passing'],
     },
+    totalMarks: {
+      type: String,
+      required: [true, 'Please add total marks obtained'],
+    },
+    marks: [
+      {
+        subject: String,
+        theory: Number,
+        practical: Number,
+        internal: Number,
+        total: Number
+      }
+    ],
     grade: {
       type: String,
-      required: [true, 'Please add grade/CGPA'],
+      default: 'N/A',
     },
     issueDate: {
       type: Date,
@@ -78,6 +132,30 @@ const certificateSchema = new mongoose.Schema(
     // Revocation info
     revokedAt: Date,
     revocationReason: String,
+    // AI Extraction/Detection Flags
+    hasPhoto: {
+      type: Boolean,
+      default: false
+    },
+    hasCandidateSignature: {
+      type: Boolean,
+      default: false
+    },
+    hasSecretarySignature: {
+      type: Boolean,
+      default: false
+    },
+    aiConfidence: {
+      type: Number,
+      default: 0
+    },
+    // Reference Images for Verification
+    studentPhotoUrl: String,
+    candidateSignatureUrl: String,
+    secretarySignatureUrl: {
+      type: String,
+      default: '/assets/signatures/secretary_default.png'
+    },
     // Blockchain/IPFS integration
     ipfsHash: {
       type: String,

@@ -56,7 +56,23 @@ const verificationLogSchema = new mongoose.Schema(
     tamperFlags: [{
       type: String,
       enum: ['signature_mismatch', 'seal_forgery', 'text_alteration', 'duplicate_detected', 'date_inconsistency']
-    }]
+    }],
+    // AI Snapshots
+    aiExtractions: {
+      studentName: String,
+      registerNumber: String,
+      emisId: String,
+      totalMarks: String,
+      dateOfBirth: String,
+      schoolName: String
+    },
+    visualVerification: {
+      photoMatch: Boolean,
+      candidateSignatureMatch: Boolean,
+      secretarySignatureMatch: Boolean,
+      isTampered: Boolean
+    },
+    confidence: Number
   },
   {
     timestamps: true,
@@ -69,7 +85,5 @@ verificationLogSchema.index({ createdAt: -1 });
 verificationLogSchema.index({ verifiedBy: 1, createdAt: -1 });
 verificationLogSchema.index({ result: 1, createdAt: -1 });
 verificationLogSchema.index({ certificate: 1 });
-
-module.exports = mongoose.model('VerificationLog', verificationLogSchema);
 
 module.exports = mongoose.model('VerificationLog', verificationLogSchema);

@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Certificate = require('../models/Certificate');
+const StudentRegistry = require('../models/StudentRegistry');
 const VerificationLog = require('../models/VerificationLog');
 
 // GET /api/dev/db-view
@@ -16,15 +17,16 @@ router.get('/db-view', async (req, res) => {
     return res.status(403).json({ error: 'Not available in production' });
   }
 
-  const [users, certificates, verificationLogs] = await Promise.all([
+  const [users, certificates, verificationLogs, studentRegistries] = await Promise.all([
     User.find().select('-password'),
     Certificate.find().populate('institution', 'name institutionDetails'),
     VerificationLog.find()
       .populate('certificate', 'certificateId studentName')
       .populate('verifiedBy', 'name email'),
+    StudentRegistry.find().populate('institution', 'name')
   ]);
 
-  res.json({ users, certificates, verificationLogs });
+  res.json({ users, certificates, verificationLogs, studentRegistries });
 });
 
 module.exports = router;

@@ -7,7 +7,7 @@ import { LogIn } from 'lucide-react';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, user } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -15,7 +15,10 @@ const Login = () => {
     const success = await login(email, password);
     if (success) {
       toast.success('Successfully logged in');
-      navigate('/');
+      // Get updated user from store
+      const currentUser = useAuthStore.getState().user;
+      const dashboardLink = currentUser?.role === 'admin' ? '/admin/dashboard' : (currentUser?.role === 'institution' ? '/university' : '/verifier');
+      navigate(dashboardLink);
     } else {
       toast.error('Login failed. Please check credentials.');
     }

@@ -399,6 +399,66 @@ npm run preview
 3. Commit with clear messages
 4. Push and create Pull Request
 
+## Deployment Guide
+
+### Docker Deployment
+
+1. **Build and run with Docker Compose:**
+```bash
+docker-compose up --build
+```
+
+This will start:
+- MongoDB on port 27017
+- AI Service (Flask) on port 8000
+- Backend API on port 5000
+- Frontend on port 80
+
+### Production Deployment
+
+1. **Environment Setup:**
+   - Set `NODE_ENV=production` in backend .env
+   - Configure production MongoDB URI
+   - Set strong JWT_SECRET
+
+2. **Build Frontend:**
+```bash
+cd frontend
+npm run build
+```
+
+3. **Start Services:**
+```bash
+# AI Service
+cd ai services
+pip install -r requirements.txt
+python app_flask.py
+
+# Backend
+cd backend
+npm start
+
+# Frontend (serve built files)
+cd frontend
+npm run preview
+```
+
+### Cloud Deployment Options
+
+- **Backend**: Deploy to Heroku, Railway, or Vercel
+- **Frontend**: Deploy to Netlify, Vercel, or Cloudflare Pages
+- **Database**: Use MongoDB Atlas
+- **AI Service**: Deploy to Railway, Render, or AWS Lambda
+
+### Security Checklist
+
+- [ ] Change default JWT secret
+- [ ] Enable HTTPS
+- [ ] Configure CORS properly
+- [ ] Set up rate limiting
+- [ ] Enable database authentication
+- [ ] Regular security updates
+
 ## Team
 
 - **Backend Development**: Pravinthaa

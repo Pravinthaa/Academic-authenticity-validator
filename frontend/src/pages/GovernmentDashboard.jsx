@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import useAuthStore from '../store/authStore';
@@ -39,25 +40,59 @@ const StatCard = ({ title, value, change, icon: Icon, color, delay = 0 }) => (
 );
 
 const INSTITUTIONS = [
-  { name: 'National Institute of Technology', state: 'Tamil Nadu', certs: '14,200', status: 'Active' },
-  { name: 'Indian Institute of Technology',   state: 'Delhi',      certs: '9,841',  status: 'Active' },
-  { name: 'University of Mumbai',             state: 'Maharashtra',certs: '22,304', status: 'Active' },
-  { name: 'Jawaharlal Nehru University',      state: 'Delhi',      certs: '5,601',  status: 'Active' },
-  { name: 'Osmania University',               state: 'Telangana',  certs: '11,093', status: 'Suspended' },
+  { name: 'State Board of School Examinations, TN', state: 'Tamil Nadu', certs: '14,200', status: 'Active' },
+  { name: 'CBSE Regional Office',                  state: 'Delhi',      certs: '9,841',  status: 'Active' },
+  { name: 'Kerala Board of Higher Secondary Education', state: 'Kerala', certs: '22,304', status: 'Active' },
+  { name: 'Maharashtra State Board',             state: 'Maharashtra',certs: '11,093', status: 'Active' },
 ];
 
 const ALERTS = [
-  { college: 'Unknown Source', cert: 'B.E Civil Engineering', conf: '94.1%', time: '12 mins ago' },
-  { college: 'Fake State Uni', cert: 'MBA Finance', conf: '88.7%', time: '1 hr ago' },
-  { college: 'Unknown Source', cert: 'B.Sc Nursing', conf: '91.3%', time: '3 hrs ago' },
-  { college: 'Private College XYZ', cert: 'B.A History', conf: '85.2%', time: '5 hrs ago' },
-  { college: 'Unknown Source', cert: 'M.Tech CS', conf: '97.6%', time: '8 hrs ago' },
+  { college: 'Unknown Source', cert: 'Higher Secondary Course (Class 12)', conf: '94.1%', time: '12 mins ago' },
+  { college: 'Fake Board XYZ', cert: 'Class 12 Certificate', conf: '88.7%', time: '1 hr ago' },
+  { college: 'Unknown Source', cert: 'Class 12 Marksheet', conf: '91.3%', time: '3 hrs ago' },
 ];
 
 const GovernmentDashboard = () => {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [rangeFilter, setRangeFilter] = useState('30d');
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    stats: { verifications: '0', institutions: '0', certificates: '0', forgeries: '0' },
+    alerts: [],
+    monthlyStats: []
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5001/api/admin/dashboard', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const d = response.data.data;
+        setData({
+          stats: {
+            verifications: d.totalVerifications?.toLocaleString() || '0',
+            institutions: d.totalInstitutions?.toLocaleString() || '0',
+            certificates: d.totalCertificates?.toLocaleString() || '0',
+            forgeries: d.forgeriesDetected?.toLocaleString() || '0'
+          },
+          alerts: d.recentLogs?.filter(l => l.result === 'not_found').map(l => ({
+            cert: l.certificate?.studentName || 'Unknown',
+            college: l.certificate?.certificateId || 'External',
+            conf: 'High',
+            time: new Date(l.createdAt).toLocaleTimeString()
+          })) || [],
+          monthlyStats: d.monthlyStats || []
+        });
+      } catch (err) {
+        console.error('Failed to fetch gov stats', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [token]);
 
   const chartBars = [40, 60, 45, 80, 50, 95, 70, 65, 85, 60, 100, 80];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -132,10 +167,10 @@ const GovernmentDashboard = () => {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-4 gap-4 mb-8">
-              <StatCard title="Total Verifications" value="1.24M" change="+14.5%" icon={Activity} color="#38bdf8" delay={0.1} />
-              <StatCard title="Active Institutions"  value="2,845"  change="+3.2%"  icon={Users}        color="#c084fc" delay={0.15} />
-              <StatCard title="Certificates Issued"  value="8.51M" change="+8.1%"  icon={Layers}       color="#10b981" delay={0.2} />
-              <StatCard title="Forgeries Detected"   value="14,204" change="-2.4%" icon={AlertOctagon}  color="#ef4444" delay={0.25} />
+              <StatCard title="Total Verifications" value={data.stats.verifications} change="+14.5%" icon={Activity} color="#38bdf8" delay={0.1} />
+              <StatCard title="Active Institutions"  value={data.stats.institutions}  change="+3.2%"  icon={Users}        color="#c084fc" delay={0.15} />
+              <StatCard title="Certificates Issued"  value={data.stats.certificates} change="+8.1%"  icon={Layers}       color="#10b981" delay={0.2} />
+              <StatCard title="Forgeries Detected"   value={data.stats.forgeries} change="-2.4%" icon={AlertOctagon}  color="#ef4444" delay={0.25} />
             </div>
 
             {/* Chart + Alerts */}

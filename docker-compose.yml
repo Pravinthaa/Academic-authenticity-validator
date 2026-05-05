@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cert-validator-ai
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      - USE_GPU=False
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017}
+      - DATABASE_NAME=certificate_validator
+    volumes:
+      - ./uploads:/app/uploads
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - mongo
+    networks:
+      - cert-validator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  mongo:
+    image: mongo:6.0
+    container_name: cert-validator-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: certificate_validator
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    networks:
+      - cert-validator-network
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  mongo-config:
+
+networks:
+  cert-validator-network:
+    driver: bridge
