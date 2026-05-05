@@ -23,9 +23,9 @@ const VerifierDashboard = () => {
   const [result, setResult] = useState(null);
   const fileRef = useRef();
 
-  const handleFile = (f) => {
-    if (!f) return;
-    setSelectedFile(f);
+  const handleFile = (file) => {
+    if (!file) return;
+    setSelectedFile(file);
     setResult(null);
   };
 
@@ -36,7 +36,11 @@ const VerifierDashboard = () => {
   };
 
   const simulate = () => {
-    if (!selectedFile) return toast.error('Please upload a certificate first.');
+    if (!selectedFile) {
+      toast.error('Please upload a certificate first.');
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
     setTimeout(() => {
@@ -82,6 +86,7 @@ const VerifierDashboard = () => {
         <p style={{ fontWeight: 600, fontSize: '15px', color: '#fff', marginBottom: '4px' }}>{user?.name || 'Verifier Portal'}</p>
         <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{user?.email}</p>
       </div>
+
       <div style={{ padding: '0 12px' }}>
         <p style={{
           fontSize: '10px',
@@ -106,7 +111,6 @@ const VerifierDashboard = () => {
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              border: 'none',
               background: activeTab === id ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
               width: '100%',
               textAlign: 'left',
@@ -162,7 +166,6 @@ const VerifierDashboard = () => {
         padding: '32px 40px',
         overflowY: 'auto'
       }}>
-        {/* Verification Tab */}
         {activeTab === 'verify' && (
           <div style={{ animation: 'fadeIn 0.5s ease' }}>
             <div style={{
@@ -195,7 +198,6 @@ const VerifierDashboard = () => {
               gap: '24px',
               alignItems: 'start'
             }}>
-              {/* Upload Panel */}
               <div style={{
                 background: 'rgba(255,255,255,0.03)',
                 backdropFilter: 'blur(10px)',
@@ -214,224 +216,230 @@ const VerifierDashboard = () => {
                   <Upload size={18} style={{ color: '#f97316' }} /> Upload Document
                 </h2>
 
-              <div
-                style={{
-                  border: `2px dashed ${dragOver ? '#f97316' : 'rgba(249, 115, 22, 0.3)'}`,
-                  background: dragOver ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)',
-                  borderRadius: '12px',
-                  padding: '40px 20px',
-                  marginBottom: '20px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  textAlign: 'center'
-                }}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current?.click()}
-              >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  style={{ display: 'none' }}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleFile(e.target.files[0])}
-                />
-                <FileCheck size={44} style={{
-                  color: selectedFile ? '#f97316' : 'rgba(255,255,255,0.4)',
-                  margin: '0 auto 16px',
-                  display: 'block'
-                }} />
-                <h3 style={{
-                  fontSize: '18px',
-                  marginBottom: '8px',
-                  color: '#fff',
-                  fontWeight: 600
-                }}>
-                  {selectedFile ? selectedFile.name : 'Drop or click to upload'}
-                </h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: 'rgba(255,255,255,0.6)'
-                }}>PDF, JPG, PNG supported (max 5 MB)</p>
-              </div>
-
-              <button
-                onClick={simulate}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  background: '#f97316',
-                  border: 'none',
-                  color: '#fff',
-                  padding: '14px 24px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: isLoading ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => !isLoading && (e.target.style.opacity = 0.85)}
-                onMouseLeave={(e) => !isLoading && (e.target.style.opacity = 1)}
-              >
-                {isLoading
-                  ? <><div style={{
-                      width: '18px',
-                      height: '18px',
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      borderTop: '2px solid #fff',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} /> Analyzing…</>
-                  : <><ScanLine size={16} /> Verify Certificate</>}
-              </button>
-            </div>
-
-            {/* Result Panel */}
-            <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
-              padding: '24px'
-            }}>
-              <h2 style={{
-                fontSize: '20px',
-                marginBottom: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#fff'
-              }}>
-                <Search size={18} style={{ color: '#f97316' }} /> Verification Result
-              </h2>
-
-              {!result && !isLoading && (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  minHeight: '280px',
-                  color: 'rgba(255,255,255,0.6)'
-                }}>
-                  <Search size={44} style={{ opacity: 0.25, marginBottom: '16px' }} />
-                  <p style={{ fontSize: '14px' }}>Upload a document and click Verify.</p>
-                </div>
-              )}
-
-              {isLoading && (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '280px',
-                  gap: '16px'
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '3px solid rgba(249, 115, 22, 0.3)',
-                    borderTop: '3px solid #f97316',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
+                <div
+                  style={{
+                    border: `2px dashed ${dragOver ? '#f97316' : 'rgba(249, 115, 22, 0.3)'}`,
+                    background: dragOver ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)',
+                    borderRadius: '12px',
+                    padding: '40px 20px',
+                    marginBottom: '20px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    textAlign: 'center'
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFile(e.target.files[0])}
+                  />
+                  <FileCheck size={44} style={{
+                    color: selectedFile ? '#f97316' : 'rgba(255,255,255,0.4)',
+                    margin: '0 auto 16px',
+                    display: 'block'
                   }} />
+                  <h3 style={{
+                    fontSize: '18px',
+                    marginBottom: '8px',
+                    color: '#fff',
+                    fontWeight: 600
+                  }}>
+                    {selectedFile ? selectedFile.name : 'Drop or click to upload'}
+                  </h3>
                   <p style={{
                     fontSize: '14px',
                     color: 'rgba(255,255,255,0.6)'
-                  }}>Running AI forgery detection models…</p>
+                  }}>PDF, JPG, PNG supported (max 5 MB)</p>
                 </div>
-              )}
 
-              {result && (
-                <div style={{ animation: 'fadeIn 0.5s ease' }}>
-                  {/* Status Banner */}
-                  <div style={{
-                    padding: '14px 16px',
-                    borderRadius: '10px',
+                <button
+                  onClick={simulate}
+                  disabled={isLoading}
+                  style={{
+                    width: '100%',
+                    background: '#f97316',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '14px 24px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s',
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '12px',
-                    marginBottom: '20px',
-                    background: result.status === 'verified' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                    border: `1px solid ${result.status === 'verified' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                    color: result.status === 'verified' ? '#10b981' : '#ef4444',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: isLoading ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => { if (!isLoading) e.target.style.opacity = 0.85; }}
+                  onMouseLeave={(e) => { if (!isLoading) e.target.style.opacity = 1; }}
+                >
+                  {isLoading ? (
+                    <>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTop: '2px solid #fff',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <ScanLine size={16} /> Verify Certificate
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <h2 style={{
+                  fontSize: '20px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#fff'
+                }}>
+                  <Search size={18} style={{ color: '#f97316' }} /> Verification Result
+                </h2>
+
+                {!result && !isLoading && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    minHeight: '280px',
+                    color: 'rgba(255,255,255,0.6)'
                   }}>
-                    {result.status === 'verified'
-                      ? <CheckCircle2 size={22} style={{ flexShrink: 0 }} />
-                      : <XCircle size={22} style={{ flexShrink: 0 }} />}
-                    <div>
+                    <Search size={44} style={{ opacity: 0.25, marginBottom: '16px' }} />
+                    <p style={{ fontSize: '14px' }}>Upload a document and click Verify.</p>
+                  </div>
+                )}
+
+                {isLoading && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '280px',
+                    gap: '16px'
+                  }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      border: '3px solid rgba(249, 115, 22, 0.3)',
+                      borderTop: '3px solid #f97316',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{
+                      fontSize: '14px',
+                      color: 'rgba(255,255,255,0.6)'
+                    }}>Running AI forgery detection models…</p>
+                  </div>
+                )}
+
+                {result && (
+                  <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                    <div style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      marginBottom: '20px',
+                      background: result.status === 'verified' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                      border: `1px solid ${result.status === 'verified' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      color: result.status === 'verified' ? '#10b981' : '#ef4444'
+                    }}>
+                      {result.status === 'verified' ? (
+                        <CheckCircle2 size={22} style={{ flexShrink: 0 }} />
+                      ) : (
+                        <XCircle size={22} style={{ flexShrink: 0 }} />
+                      )}
+                      <div>
+                        <p style={{
+                          fontWeight: 700,
+                          fontSize: '16px',
+                          marginBottom: '4px',
+                          color: result.status === 'verified' ? '#10b981' : '#ef4444'
+                        }}>
+                          {result.status === 'verified' ? 'Authentic Certificate' : 'Forgery Detected'}
+                        </p>
+                        <p style={{
+                          fontSize: '13px',
+                          opacity: 0.85,
+                          color: result.status === 'verified' ? '#10b981' : '#ef4444'
+                        }}>
+                          {result.status === 'verified'
+                            ? 'This document matches official records on VERI-CHAIN.'
+                            : 'Discrepancies found. Document likely tampered.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      borderRadius: '10px',
+                      padding: '16px 20px',
+                      border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
                       <p style={{
-                        fontWeight: 700,
-                        fontSize: '16px',
-                        marginBottom: '4px',
-                        color: result.status === 'verified' ? '#10b981' : '#ef4444'
+                        fontSize: '11px',
+                        color: 'rgba(255,255,255,0.5)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        marginBottom: '12px'
                       }}>
-                        {result.status === 'verified' ? 'Authentic Certificate' : 'Forgery Detected'}
+                        Extracted Data &nbsp;·&nbsp; OCR Confidence: {result.ocrConfidence}%
                       </p>
-                      <p style={{
-                        fontSize: '13px',
-                        opacity: 0.85,
-                        color: result.status === 'verified' ? '#10b981' : '#ef4444'
-                      }}>
-                        {result.status === 'verified'
-                          ? 'This document matches official records on VERI-CHAIN.'
-                          : 'Discrepancies found. Document likely tampered.'}
-                      </p>
+                      {Object.entries(result.details).map(([k, v]) => (
+                        <div key={k} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          paddingBottom: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{
+                            fontSize: '14px',
+                            color: 'rgba(255,255,255,0.6)',
+                            textTransform: 'capitalize'
+                          }}>{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: '#fff'
+                          }}>{v}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  {/* Details */}
-                  <div style={{
-                    background: 'rgba(0,0,0,0.2)',
-                    borderRadius: '10px',
-                    padding: '16px 20px',
-                    border: '1px solid rgba(255,255,255,0.08)'
-                  }}>
-                    <p style={{
-                      fontSize: '11px',
-                      color: 'rgba(255,255,255,0.5)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px',
-                      marginBottom: '12px'
-                    }}>
-                      Extracted Data &nbsp;·&nbsp; OCR Confidence: {result.ocrConfidence}%
-                    </p>
-                    {Object.entries(result.details).map(([k, v]) => (
-                      <div key={k} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        paddingBottom: '8px',
-                        marginBottom: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '14px',
-                          color: 'rgba(255,255,255,0.6)',
-                          textTransform: 'capitalize'
-                        }}>{k.replace(/([A-Z])/g, ' $1').trim()}</span>
-                        <span style={{
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          color: '#fff'
-                        }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* History Tab */}
         {activeTab === 'history' && (
           <div style={{ animation: 'fadeIn 0.5s ease' }}>
             <div style={{
@@ -482,7 +490,6 @@ const VerifierDashboard = () => {
           </div>
         )}
 
-        {/* How It Works */}
         {activeTab === 'help' && (
           <div style={{ animation: 'fadeIn 0.5s ease' }}>
             <div style={{

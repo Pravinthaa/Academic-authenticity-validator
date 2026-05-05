@@ -6,13 +6,13 @@
   --bg-card: rgba(10, 15, 30, 0.5);
   --bg-glass: rgba(12, 18, 35, 0.35);
 
-  --accent-primary: #38bdf8;
-  --accent-secondary: #c084fc;
-  --accent-glow: rgba(0, 240, 255, 0.3);
-  --accent-glow-secondary: rgba(112, 0, 255, 0.3);
+  --accent-primary: #f97316;
+  --accent-secondary: #fb923c;
+  --accent-glow: rgba(249, 115, 22, 0.28);
+  --accent-glow-secondary: rgba(251, 146, 60, 0.18);
 
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-secondary: #d4d4d8;
   --text-muted: #64748b;
 
   --success: #10b981;
@@ -80,7 +80,7 @@ a {
 
 .glass-card:hover {
   transform: translateY(-4px) scale(1.01);
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: rgba(249, 115, 22, 0.3);
   box-shadow: 0 15px 35px rgba(0,0,0,0.3), var(--shadow-glow);
 }
 
@@ -102,13 +102,13 @@ a {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), #0099ff);
-  color: #000;
-  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(249, 115, 22, 0.24);
 }
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--accent-glow);
+  box-shadow: 0 6px 22px var(--accent-glow);
 }
 .btn-primary:disabled {
   opacity: 0.5;

@@ -175,7 +175,6 @@ const UniversityDashboard = () => {
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              border: 'none',
               background: activeTab === id ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
               width: '100%',
               textAlign: 'left',
@@ -346,9 +345,6 @@ const UniversityDashboard = () => {
                       ))}
                     </tr>
                   </thead>
-                    ))}
-                  </tr>
-                </thead>
                 <tbody>
                   {[
                     { name: 'Anya Sharma', roll: 'CS22-001', course: 'B.Sc CS', year: 2024, grade: '9.2', status: 'Recorded' },
@@ -483,15 +479,6 @@ const UniversityDashboard = () => {
                   }}
                 >
                   Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-                  setSingleData({ studentName: '', rollNumber: '', course: '', graduationYear: '', grade: '', certificateId: '' })
-                }>
-                  Clear
                 </button>
               </div>
             </form>

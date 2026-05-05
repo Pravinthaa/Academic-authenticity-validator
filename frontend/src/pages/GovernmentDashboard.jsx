@@ -128,7 +128,6 @@ const GovernmentDashboard = () => {
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: 'none',
                 background: activeTab === id ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
                 width: '100%',
                 textAlign: 'left',
@@ -265,9 +264,6 @@ const GovernmentDashboard = () => {
                   ))}
                 </div>
               </div>
-                ))}
-              </div>
-            </div>
 
             {/* Stat Cards */}
             <div style={{

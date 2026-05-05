@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const API_URL = `${API_BASE_URL}/api`;
 
 export const useAuthStore = create((set, get) => ({
@@ -20,12 +20,14 @@ export const useAuthStore = create((set, get) => ({
         user: res.data.user, 
         token: res.data.token, 
         isAuthenticated: true, 
-        isLoading: false 
+        isLoading: false,
+        error: null
       });
       return true;
     } catch (error) {
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Login failed. Please check your email and password.';
       set({ 
-        error: error.response?.data?.error || 'Login failed', 
+        error: errorMsg, 
         isLoading: false 
       });
       return false;
@@ -41,12 +43,14 @@ export const useAuthStore = create((set, get) => ({
         user: res.data.user, 
         token: res.data.token, 
         isAuthenticated: true, 
-        isLoading: false 
+        isLoading: false,
+        error: null
       });
       return true;
     } catch (error) {
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Registration failed. Please check your inputs and try again.';
       set({ 
-        error: error.response?.data?.error || 'Registration failed', 
+        error: errorMsg, 
         isLoading: false 
       });
       return false;
