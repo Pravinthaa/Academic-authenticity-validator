@@ -22,9 +22,12 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 const institutionRoutes = require('./routes/institutionRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/institutions', institutionRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Dev-only routes (DB viewer)
 if (process.env.NODE_ENV === 'development') {

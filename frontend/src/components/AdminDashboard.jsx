@@ -5,6 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Loader, Users, FileCheck, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -19,16 +21,16 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const [statsResponse, logsResponse] = await Promise.all([
-        axios.get('http://localhost:5000/api/certificates/stats/overview', {
+        axios.get(`${API_BASE_URL}/api/admin/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/certificates', {
+        axios.get(`${API_BASE_URL}/api/admin/activities`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { limit: 20 }
         })
       ]);
 
-      setStats(statsResponse.data.stats);
+      setStats(statsResponse.data.data);
       setLogs(logsResponse.data.data || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -50,7 +52,13 @@ export default function AdminDashboard() {
   }
 
   const certificateData = stats?.certificates || {};
-  const verificationData = stats?.verifications || {};
+  const verificationData = {
+    found: stats?.foundVerifications || 0,
+    notFound: stats?.notFoundVerifications || 0,
+    total: stats?.totalVerifications || 0,
+    recentVerifications: stats?.recentVerifications || 0,
+    successRate: stats?.successRate || 0
+  };
 
   const chartData = [
     { name: 'Active', value: certificateData.active || 0, fill: '#10b981' },
@@ -170,7 +178,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gray-800/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-6">
             <p className="text-gray-300 text-sm mb-2">Recent Verifications (7 days)</p>
-            <p className="text-2xl font-bold text-blue-400">{verificationData.recentSevenDays || 0}</p>
+            <p className="text-2xl font-bold text-blue-400">{verificationData.recentVerifications || 0}</p>
             <p className="text-gray-400 text-xs mt-2">Last week's activity</p>
           </div>
 
@@ -193,43 +201,36 @@ export default function AdminDashboard() {
 
         {/* Recent Logs */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-6">
-          <h2 className="text-white font-bold text-lg mb-6">Recent Certificates</h2>
+          <h2 className="text-white font-bold text-lg mb-6">Recent Verification Activities</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-purple-500/20">
-                  <th className="text-left py-3 px-4 text-purple-300">Student Name</th>
-                  <th className="text-left py-3 px-4 text-purple-300">Roll Number</th>
-                  <th className="text-left py-3 px-4 text-purple-300">Course</th>
-                  <th className="text-left py-3 px-4 text-purple-300">Status</th>
+                  <th className="text-left py-3 px-4 text-purple-300">Activity</th>
+                  <th className="text-left py-3 px-4 text-purple-300">Query</th>
+                  <th className="text-left py-3 px-4 text-purple-300">Result</th>
+                  <th className="text-left py-3 px-4 text-purple-300">Verified By</th>
                   <th className="text-left py-3 px-4 text-purple-300">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.length > 0 ? (
-                  logs.map((log) => (
-                    <tr key={log._id} className="border-b border-purple-500/10 hover:bg-gray-700/30 transition-colors">
-                      <td className="py-3 px-4 text-gray-300">{log.studentName}</td>
-                      <td className="py-3 px-4 text-gray-300">{log.rollNumber}</td>
-                      <td className="py-3 px-4 text-gray-300">{log.course}</td>
-                      <td className="py-3 px-4">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          log.status === 'active'
-                            ? 'bg-green-900/50 text-green-300'
-                            : 'bg-red-900/50 text-red-300'
-                        }`}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-gray-400">
-                        {new Date(log.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))
+                  logs.map((log) => {
+                    const userName = log.verifiedBy?.name || log.verifierOrganisation || 'Public';
+                    return (
+                      <tr key={log._id} className="border-b border-purple-500/10 hover:bg-gray-700/30 transition-colors">
+                        <td className="py-3 px-4 text-gray-300 capitalize">{log.queryType || 'lookup'}</td>
+                        <td className="py-3 px-4 text-gray-300">{log.queryValue}</td>
+                        <td className="py-3 px-4 text-gray-300">{log.result}</td>
+                        <td className="py-3 px-4 text-gray-300">{userName}</td>
+                        <td className="py-3 px-4 text-gray-400">{new Date(log.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="5" className="py-6 text-center text-gray-400">
-                      No certificates found
+                      No recent activity logs available
                     </td>
                   </tr>
                 )}

@@ -6,7 +6,10 @@ const {
   getInstitutionCertificates,
   revokeCertificate,
   getVerificationStats,
-  searchCertificates
+  searchCertificates,
+  extractCertificateDetails,
+  analyzeCertificate,
+  getVerificationResult
 } = require('../controllers/certificateController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { uploadFile } = require('../middleware/uploadMiddleware');
@@ -28,14 +31,24 @@ router.post(
   '/upload',
   protect,
   authorize('institution', 'admin'),
-  uploadFile.single('certificate'),
+  uploadFile.fields([
+    { name: 'certificate', maxCount: 1 },
+    { name: 'studentPhoto', maxCount: 1 },
+    { name: 'studentSignature', maxCount: 1 },
+    { name: 'secretarySignature', maxCount: 1 }
+  ]),
   validateCertificateUpload,
   sanitizeCertificateData,
   uploadCertificate
 );
 
+// Advanced AI Routes
+router.post('/extract', protect, uploadFile.single('certificate'), extractCertificateDetails);
+router.post('/analyze', protect, uploadFile.single('certificate'), analyzeCertificate);
+
 // Get certificate details
 router.get('/:id', protect, getCertificate);
+router.get('/:id/result', protect, getVerificationResult);
 
 // Search certificates
 router.get('/search', protect, validateSearch, searchCertificates);

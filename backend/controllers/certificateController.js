@@ -1,8 +1,22 @@
-const Certificate = require('../models/Certificate');
-const VerificationLog = require('../models/VerificationLog');
-const User = require('../models/User');
 const fs = require('fs');
-const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+const User = require('../models/User');
+const Certificate = require('../models/Certificate');
+const StudentRegistry = require('../models/StudentRegistry');
+const VerificationLog = require('../models/VerificationLog');
+
+const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_URL || 'http://localhost:5000';
+
+const cleanupUploadedFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (error) {
+      console.warn(`Unable to delete temp file ${filePath}:`, error.message);
+    }
+  }
+};
 
 // @desc    Upload and verify certificate
 // @route   POST /api/certificates/upload
@@ -35,19 +49,37 @@ exports.uploadCertificate = async (req, res, next) => {
       });
     }
 
+    // Get file paths for reference documents
+    const photoPath = req.files && req.files['studentPhoto'] ? `uploads/${req.files['studentPhoto'][0].filename}` : null;
+    const signaturePath = req.files && req.files['studentSignature'] ? `uploads/${req.files['studentSignature'][0].filename}` : null;
+    const secretarySignaturePath = req.files && req.files['secretarySignature'] ? `uploads/${req.files['secretarySignature'][0].filename}` : null;
+
     // Create certificate record
     const certificate = await Certificate.create({
       institution: institutionId,
       studentName,
       rollNumber,
-      course: req.body.course || 'Not provided',
-      graduationYear: req.body.graduationYear || new Date().getFullYear(),
-      grade: req.body.grade || 'Not provided',
-      certificateId: `CERT-${Date.now()}`,
-      filePath: req.file.path,
-      fileName: req.file.filename,
-      mimeType: req.file.mimetype,
-      fileSize: req.file.size
+      registerNumber: req.body.registerNumber,
+      emisId: req.body.emisId,
+      certificateSerialNo: req.body.certificateSerialNo,
+      sessionAndYear: req.body.sessionAndYear,
+      dateOfBirth: req.body.dateOfBirth,
+      schoolName: req.body.schoolName,
+      graduationYear: req.body.graduationYear || 2024,
+      totalMarks: req.body.totalMarks,
+      tmrCode: req.body.tmrCode,
+      certificateId: req.body.certificateId || req.body.certificateSerialNo || `CERT-${Date.now()}`,
+      filePath: req.files['certificate'][0].path,
+      fileName: req.files['certificate'][0].filename,
+      mimeType: req.files['certificate'][0].mimetype,
+      fileSize: req.files['certificate'][0].size,
+      studentPhotoUrl: photoPath,
+      candidateSignatureUrl: signaturePath,
+      secretarySignatureUrl: secretarySignaturePath,
+      // AI Metadata
+      hasPhoto: !!photoPath, 
+      hasCandidateSignature: !!signaturePath,
+      hasSecretarySignature: !!secretarySignaturePath
     });
 
     res.status(201).json({
@@ -71,97 +103,103 @@ exports.uploadCertificate = async (req, res, next) => {
 // @access  Public
 exports.verifyCertificate = async (req, res, next) => {
   try {
-    const { certificateId, rollNumber, studentName, institutionId } = req.body;
+    const { certificateId, rollNumber, studentName } = req.body;
+    let certFile = null;
 
-    let searchCriteria = {};
-
+    // 1. Initial Search for existing record (if ID is provided)
+    let groundTruth = null;
     if (certificateId) {
-      searchCriteria.certificateId = certificateId;
-    } else if (rollNumber && studentName) {
-      searchCriteria.rollNumber = rollNumber;
-      searchCriteria.studentName = studentName;
-    } else {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide either certificateId or both rollNumber and studentName' 
-      });
+      groundTruth = await Certificate.findOne({ certificateId }).populate('institution');
     }
 
-    if (institutionId) {
-      searchCriteria.institution = institutionId;
+    // 2. If no image is provided, we can't do AI verification
+    if (!req.file) {
+      if (!groundTruth) {
+        return res.status(404).json({ success: false, status: 'NOT_FOUND', message: 'No record found' });
+      }
+      return res.status(200).json({ success: true, status: groundTruth.status === 'active' ? 'valid' : 'revoked', certificate: groundTruth });
     }
 
-    // Search for certificate
-    const certificate = await Certificate.findOne(searchCriteria).populate('institution', 'name email institutionDetails');
-
-    // Log verification attempt
-    const verificationLog = await VerificationLog.create({
-      queryValue: certificateId || rollNumber,
-      queryType: certificateId ? 'certificateId' : 'rollNumber',
-      result: certificate ? (certificate.status === 'active' ? 'found' : 'revoked') : 'not_found',
-      verifiedBy: req.user ? req.user.id : null,
-      ipAddress: req.ip || req.connection.remoteAddress,
-      verifierOrganisation: req.body.verifierOrganisation,
-      certificate: certificate ? certificate._id : null
+    // 3. AI EXTRACTION & ANALYSIS (The Core Step)
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(req.file.path));
+    
+    const aiResponse = await axios.post(`${AI_SERVICE_BASE_URL}/validate`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 90000
     });
 
-    if (!certificate) {
+    const aiResult = aiResponse.data;
+    const ocrData = aiResult.steps?.ocr?.extracted_fields || {};
+    const sealData = aiResult.steps?.seal_detection || {};
+
+    // 4. FIND GROUND TRUTH BY AI-EXTRACTED DATA
+    // We prioritize the Permanent Register Number extracted from the image
+    const regNo = ocrData.register_number || req.body.registerNumber;
+    groundTruth = await StudentRegistry.findOne({ registerNumber: regNo }).populate('institution');
+
+    if (!groundTruth) {
+      cleanupUploadedFile(req.file.path);
       return res.status(404).json({
         success: false,
-        message: 'Certificate not found in database',
-        verificationId: verificationLog._id,
-        status: 'invalid',
-        details: {
-          studentName: req.body.studentName,
-          rollNumber: req.body.rollNumber,
-          reason: 'No matching record found'
-        }
+        status: 'INVALID',
+        message: 'No official board record found for this Register Number. Certificate is likely a forgery.',
+        aiExtractions: ocrData
       });
     }
 
-    if (certificate.status === 'revoked') {
-      return res.status(200).json({
-        success: false,
-        message: 'Certificate has been revoked',
-        verificationId: verificationLog._id,
-        status: 'revoked',
-        details: certificate
-      });
-    }
-
-    // Verify certificate data matches
+    // 5. DATA MATCHING (Textual Comparison)
     const dataMatches = {
-      studentName: !studentName || certificate.studentName.toLowerCase() === studentName.toLowerCase(),
-      rollNumber: !rollNumber || certificate.rollNumber === rollNumber,
-      institution: !institutionId || certificate.institution._id.toString() === institutionId
+      studentName: ocrData.student_name?.toLowerCase().includes(groundTruth.studentName.toLowerCase()) || groundTruth.studentName.toLowerCase().includes(ocrData.student_name?.toLowerCase()),
+      registerNumber: ocrData.register_number === groundTruth.registerNumber,
+      emisId: ocrData.emis_id === groundTruth.emisId,
+      totalMarks: ocrData.total_marks === groundTruth.totalMarks,
+      dateOfBirth: ocrData.date_of_birth === groundTruth.dateOfBirth,
+      schoolName: ocrData.school_name?.toLowerCase().includes(groundTruth.schoolName.toLowerCase()) || groundTruth.schoolName.toLowerCase().includes(ocrData.school_name?.toLowerCase())
     };
 
-    const allMatch = Object.values(dataMatches).every(v => v);
+    // 6. VISUAL VERIFICATION (AI Results)
+    const visualVerification = {
+      photoMatch: sealData.has_photo && !!groundTruth.studentPhotoUrl,
+      candidateSignatureMatch: sealData.has_candidate_signature && !!groundTruth.candidateSignatureUrl,
+      secretarySignatureMatch: sealData.has_secretary_signature,
+      isTampered: aiResult.steps?.tamper_detection?.is_tampered || false
+    };
+
+    // 7. FINAL LOGGING
+    const allTextMatch = Object.values(dataMatches).every(v => v === true);
+    const allVisualMatch = visualVerification.photoMatch && visualVerification.candidateSignatureMatch && visualVerification.secretarySignatureMatch;
+
+    const verificationLog = await VerificationLog.create({
+      queryValue: regNo,
+      queryType: 'registerNumber',
+      result: allTextMatch && allVisualMatch ? 'found' : 'suspicious',
+      verifiedBy: req.user ? req.user.id : null,
+      ipAddress: req.ip || req.connection.remoteAddress,
+      certificate: groundTruth._id,
+      aiExtractions: ocrData,
+      visualVerification: visualVerification,
+      confidence: aiResult.confidence
+    });
+
+    cleanupUploadedFile(req.file.path);
 
     res.status(200).json({
       success: true,
-      message: 'Certificate verification completed',
+      message: 'Comprehensive verification completed',
       verificationId: verificationLog._id,
-      status: allMatch ? 'valid' : 'suspicious',
-      certificate: {
-        _id: certificate._id,
-        certificateId: certificate.certificateId,
-        studentName: certificate.studentName,
-        rollNumber: certificate.rollNumber,
-        course: certificate.course,
-        graduationYear: certificate.graduationYear,
-        grade: certificate.grade,
-        issueDate: certificate.issueDate,
-        institution: certificate.institution,
-        status: certificate.status
-      },
+      status: (allTextMatch && allVisualMatch && !visualVerification.isTampered) ? 'valid' : 'suspicious',
+      certificate: groundTruth,
       dataMatches,
-      issueDate: certificate.issueDate,
-      validFrom: certificate.issueDate,
+      visualVerification,
+      aiExtractions: ocrData,
+      confidence: aiResult.confidence,
       verifiedAt: new Date()
     });
 
   } catch (error) {
+    if (req.file) cleanupUploadedFile(req.file.path);
+    console.error('Verification Error:', error.message);
     next(error);
   }
 };
@@ -339,6 +377,144 @@ exports.searchCertificates = async (req, res, next) => {
       success: true,
       count: results.length,
       data: results
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Extract details from a certificate (OCR)
+// @route   POST /api/certificates/extract
+// @access  Private
+exports.extractCertificateDetails = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Send file to AI service for OCR extraction
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(req.file.path));
+    if (req.body.certificateId) {
+      formData.append('certificate_id', req.body.certificateId);
+    }
+
+    const aiResponse = await axios.post(`${AI_SERVICE_BASE_URL}/validate`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 60000
+    });
+
+    // Clean up uploaded file
+    cleanupUploadedFile(req.file.path);
+
+    const responseData = aiResponse.data || {};
+    
+    // Extract OCR results from the pipeline response
+    let extractedData = {};
+    if (responseData.steps && responseData.steps.ocr && responseData.steps.ocr.status === 'success') {
+      extractedData = responseData.steps.ocr.extracted_fields;
+    } else {
+      extractedData = responseData.ocr_data || responseData.extracted || responseData;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Details extracted successfully',
+      data: extractedData
+    });
+  } catch (error) {
+    // Clean up file on error
+    if (req.file) {
+      cleanupUploadedFile(req.file.path);
+    }
+
+    console.error('AI Service Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to extract certificate details',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Detect forgery or tampering (CNN, YOLO, SNN)
+// @route   POST /api/certificates/analyze
+// @access  Private
+exports.analyzeCertificate = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Send file to AI service for full analysis
+    const formData = new FormData();
+    formData.append('file', fs.createReadStream(req.file.path));
+    if (req.body.certificateId) {
+      formData.append('certificate_id', req.body.certificateId);
+    }
+
+    const aiResponse = await axios.post(`${AI_SERVICE_BASE_URL}/validate`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 90000
+    });
+
+    // Clean up uploaded file
+    cleanupUploadedFile(req.file.path);
+
+    const analysisData = aiResponse.data || {};
+    
+    // Structure the response to include specific model results requested
+    const result = {
+      finalDecision: analysisData.final_decision,
+      confidence: analysisData.confidence,
+      timestamp: analysisData.timestamp,
+      models: {
+        cnn: analysisData.steps?.tamper_detection || { status: 'not_run' },
+        yolo: analysisData.steps?.seal_detection || { status: 'not_run' },
+        snn: analysisData.steps?.signature_verification || { status: 'not_run' },
+        ocr: analysisData.steps?.ocr || { status: 'not_run' }
+      },
+      isTampered: analysisData.steps?.tamper_detection?.is_tampered || false,
+      hasSeal: analysisData.steps?.seal_detection?.has_seal || false
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Certificate analysis completed',
+      data: result
+    });
+  } catch (error) {
+    // Clean up file on error
+    if (req.file) {
+      cleanupUploadedFile(req.file.path);
+    }
+
+    console.error('AI Service Analysis Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to analyze certificate',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get verification and analysis result
+// @route   GET /api/certificates/:id/result
+// @access  Private
+exports.getVerificationResult = async (req, res, next) => {
+  try {
+    const certificate = await Certificate.findById(req.params.id);
+    if (!certificate) return res.status(404).json({ success: false, message: 'Certificate not found' });
+    
+    const logs = await VerificationLog.find({ certificate: req.params.id }).sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Verification result retrieved', 
+      data: {
+        certificateStatus: certificate.status,
+        verificationHistory: logs
+      } 
     });
   } catch (error) {
     next(error);

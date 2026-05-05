@@ -26,7 +26,9 @@ const Register = () => {
     const success = await register(formData);
     if (success) {
       toast.success('Successfully registered');
-      navigate('/');
+      const currentUser = useAuthStore.getState().user;
+      const dashboardLink = currentUser?.role === 'admin' ? '/admin/dashboard' : (currentUser?.role === 'institution' ? '/university' : '/verifier');
+      navigate(dashboardLink);
     } else {
       toast.error('Registration failed. Please check inputs.');
     }
