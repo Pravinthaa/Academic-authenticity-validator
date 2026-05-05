@@ -8,6 +8,9 @@ const connectDB = async () => {
 
     const { host, name } = conn.connection;
     console.log(`✅ MongoDB Connected → host: ${host}  |  db: ${name}`);
+      await mongoose.model('StudentRegistry').syncIndexes();
+    await mongoose.model('Certificate').syncIndexes();
+await mongoose.model('VerificationLog').syncIndexes();
   } catch (error) {
     console.error(`❌ MongoDB connection failed: ${error.message}`);
     console.error('   Make sure MongoDB is running and MONGO_URI in .env is correct.');
