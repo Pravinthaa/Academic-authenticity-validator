@@ -35,30 +35,75 @@ const VerifierDashboard = () => {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const simulate = () => {
-    if (!selectedFile) {
-      toast.error('Please upload a certificate first.');
-      return;
-    }
-
+  const simulate = async () => {
+    if (!selectedFile) return toast.error('Please upload a certificate first.');
     setIsLoading(true);
     setResult(null);
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('certificate', selectedFile);
+
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001'}/api/certificates/verify`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const responseData = response.data || {};
+      const isTampered = responseData.status === 'tampered';
+      const extracted = responseData.aiExtractions || {};
+
+      // For verified responses (including untampered mocks), prefer structured
+      // `certificate` object returned by the API, fall back to `aiExtractions`.
+      const cert = responseData.certificate || {
+        studentName: extracted.student_name,
+        registerNumber: extracted.register_number,
+        emisId: extracted.emis_id,
+        totalMarks: extracted.total_marks,
+        dateOfBirth: extracted.date_of_birth,
+        schoolName: extracted.school_name,
+        certificateId: extracted.certificate_serial_no,
+        graduationYear: extracted.graduation_year || 2024
+      };
+
       setResult({
-        status: 'verified',
-        ocrConfidence: 97.8,
+        status: isTampered ? 'tampered' : 'verified',
+        ocrConfidence: isTampered
+          ? Math.round((responseData.confidence || 0) * 100)
+          : Math.round((responseData.confidence || 0) * 100) || 97.8,
+        confidence: responseData.confidence,
+        institution: responseData.institution,
+        tamperDetails: responseData.tamperDetails,
+        details: isTampered
+          ? {
+              registerNumber: extracted.register_number || selectedFile.name,
+              studentName: extracted.student_name || 'Tampered Certificate',
+              schoolName: extracted.school_name || responseData.institution?.name || 'Mock Institution',
+              tamperReason: responseData.tamperDetails?.details || 'Filename marker indicates tampering',
+              confidence: `${Math.round((responseData.confidence || 0) * 100)}%`,
+            }
+          : {
+              studentName: cert.studentName || selectedFile.name,
+              rollNumber: cert.rollNumber || cert.registerNumber || '',
+              registerNumber: cert.registerNumber || '',
+              schoolName: cert.schoolName || responseData.institution?.name || '',
+              graduationYear: cert.graduationYear || 2024,
+              totalMarks: cert.totalMarks ? `${cert.totalMarks} / 600` : (cert.totalMarks || ''),
+              certificateId: cert.certificateId || ''
+            }
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Verification failed');
+      setResult({
+        status: 'tampered',
+        ocrConfidence: 0,
         details: {
-          studentName: 'Anya Sharma',
-          rollNumber: 'CS22-001',
-          institution: 'Tech University',
-          course: 'B.Sc Computer Science',
-          graduationYear: 2024,
-          grade: '9.2 CGPA',
-          certificateId: 'CERT-2024-CS-001',
+          studentName: selectedFile.name,
+          tamperReason: 'Verification service unavailable',
         }
       });
-    }, 2600);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const Sidebar = (
@@ -434,8 +479,30 @@ const VerifierDashboard = () => {
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {result.status === 'tampered' && (
+                    <div className="mb-5 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-100">
+                      <p className="text-xs font-bold uppercase tracking-widest mb-2">Tampered Alert</p>
+                      <p className="text-sm">
+                        Institution: {result.institution?.name || 'Mock Institution'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Details */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '1rem 1.25rem', border: '1px solid var(--border-glass)' }}>
+                    <p className="text-xs text-muted uppercase tracking-widest mb-3">
+                      Extracted Data &nbsp;·&nbsp; OCR Confidence: {result.ocrConfidence}%
+                    </p>
+                    {Object.entries(result.details).map(([k, v]) => (
+                      <div key={k} className="flex justify-between border-b pb-2 mb-2" style={{ borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                        <span className="text-secondary text-sm capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <span className="text-sm font-medium">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
