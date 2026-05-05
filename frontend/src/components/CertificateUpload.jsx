@@ -223,8 +223,16 @@ export default function CertificateUpload() {
                       <input name="registerNumber" value={formData.registerNumber} onChange={handleInputChange} className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none" />
                     </div>
                     <div>
+                      <label className="block text-xs font-bold text-purple-300 uppercase mb-2">Roll Number of Passing</label>
+                      <input name="rollNumber" value={formData.rollNumber} onChange={handleInputChange} className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none" />
+                    </div>
+                    <div>
                       <label className="block text-xs font-bold text-purple-300 uppercase mb-2">Total Marks Obtained</label>
                       <input name="totalMarks" value={formData.totalMarks} onChange={handleInputChange} className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none" placeholder="0589" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-purple-300 uppercase mb-2">T.M.R. Code & Date</label>
+                      <input name="tmrCode" value={formData.tmrCode} onChange={handleInputChange} className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none" />
                     </div>
                   </div>
 

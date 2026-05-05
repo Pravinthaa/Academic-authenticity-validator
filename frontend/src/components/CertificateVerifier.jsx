@@ -335,8 +335,6 @@ export default function CertificateVerifier() {
                         { label: 'Student Name', key: 'studentName' },
                         { label: 'Permanent Reg No', key: 'registerNumber' },
                         { label: 'EMIS ID Number', key: 'emisId' },
-                        { label: 'Certificate SL No', key: 'certificateSerialNo' },
-                        { label: 'Year of Issue', key: 'sessionAndYear' },
                         { label: 'Total Marks', key: 'totalMarks' },
                         { label: 'Date of Birth', key: 'dateOfBirth' },
                         { label: 'School Name', key: 'schoolName' }

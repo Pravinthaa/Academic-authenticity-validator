@@ -9,9 +9,9 @@ import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
 
 const SIDEBAR_ITEMS = [
-  { id: 'verify', label: 'Verify Document', icon: ScanLine },
+  { id: 'verify',  label: 'Verify Document',  icon: ScanLine },
   { id: 'history', label: 'Verification History', icon: History },
-  { id: 'help', label: 'How It Works', icon: HelpCircle },
+  { id: 'help',    label: 'How It Works',     icon: HelpCircle },
 ];
 
 const VerifierDashboard = () => {
@@ -478,31 +478,34 @@ const VerifierDashboard = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
 
-                  {result.status === 'tampered' && (
-                    <div className="mb-5 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-100">
-                      <p className="text-xs font-bold uppercase tracking-widest mb-2">Tampered Alert</p>
-                      <p className="text-sm">
-                        Institution: {result.institution?.name || 'Mock Institution'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Details */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: '1rem 1.25rem', border: '1px solid var(--border-glass)' }}>
-                    <p className="text-xs text-muted uppercase tracking-widest mb-3">
-                      Extracted Data &nbsp;·&nbsp; OCR Confidence: {result.ocrConfidence}%
-                    </p>
-                    {Object.entries(result.details).map(([k, v]) => (
-                      <div key={k} className="flex justify-between border-b pb-2 mb-2" style={{ borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-                        <span className="text-secondary text-sm capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}</span>
-                        <span className="text-sm font-medium">{v}</span>
+                    {result.status === 'tampered' && (
+                      <div style={{
+                        background: 'rgba(239,68,68,0.08)',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        borderRadius: '10px',
+                        padding: '12px 16px',
+                        marginTop: '12px'
+                      }}>
+                        <p style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          color: 'rgba(239,68,68,0.9)',
+                          marginBottom: '6px'
+                        }}>Tampered Alert</p>
+                        <p style={{
+                          fontSize: '13px',
+                          color: 'rgba(239,68,68,0.8)'
+                        }}>
+                          Institution: {result.institution?.name || 'Mock Institution'}
+                        </p>
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
