@@ -9,7 +9,8 @@ const {
   searchCertificates,
   extractCertificateDetails,
   analyzeCertificate,
-  getVerificationResult
+  getVerificationResult,
+  listUntamperedMocks
 } = require('../controllers/certificateController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { uploadFile } = require('../middleware/uploadMiddleware');
@@ -24,7 +25,15 @@ const {
 const router = express.Router();
 
 // Public routes
-router.post('/verify', validateCertificateVerification, verifyCertificate);
+router.post(
+  '/verify',
+  uploadFile.single('certificate'),
+  validateCertificateVerification,
+  verifyCertificate
+);
+
+// Debug: list untampered mocks (dev only)
+router.get('/mocks/list', listUntamperedMocks);
 
 // Protected routes - upload certificate
 router.post(

@@ -70,7 +70,7 @@ exports.validateCertificateVerification = [
   
   (req, res, next) => {
     const { certificateId, rollNumber, studentName } = req.body;
-    if (!certificateId && (!rollNumber || !studentName)) {
+    if (!req.file && !certificateId && (!rollNumber || !studentName)) {
       return res.status(400).json({ 
         success: false, 
         message: 'Provide either certificateId or both rollNumber and studentName' 

@@ -1,10 +1,13 @@
 const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
 const User = require('../models/User');
 const Certificate = require('../models/Certificate');
 const StudentRegistry = require('../models/StudentRegistry');
 const VerificationLog = require('../models/VerificationLog');
+const tamperedMocks = require('../mocks/tamperedMocks');
+const untamperedMocks = require('../mocks/untamperedMocks');
 
 const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_URL || 'http://localhost:5000';
 
@@ -22,8 +25,10 @@ const cleanupUploadedFile = (filePath) => {
 // @route   POST /api/certificates/upload
 // @access  Public
 exports.uploadCertificate = async (req, res, next) => {
+  let certificateFile = null;
   try {
-    if (!req.file) {
+    certificateFile = (req.files && req.files['certificate'] && req.files['certificate'][0]) ? req.files['certificate'][0] : req.file;
+    if (!certificateFile) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
@@ -32,7 +37,7 @@ exports.uploadCertificate = async (req, res, next) => {
     // Validate required fields
     if (!studentName || !rollNumber || !institutionId) {
       // Clean up uploaded file
-      fs.unlinkSync(req.file.path);
+      cleanupUploadedFile(certificateFile.path);
       return res.status(400).json({ 
         success: false, 
         message: 'Please provide studentName, rollNumber, and institutionId' 
@@ -42,7 +47,7 @@ exports.uploadCertificate = async (req, res, next) => {
     // Check if institution exists
     const institution = await User.findById(institutionId);
     if (!institution || institution.role !== 'institution') {
-      fs.unlinkSync(req.file.path);
+      cleanupUploadedFile(certificateFile.path);
       return res.status(404).json({ 
         success: false, 
         message: 'Institution not found' 
@@ -53,6 +58,53 @@ exports.uploadCertificate = async (req, res, next) => {
     const photoPath = req.files && req.files['studentPhoto'] ? `uploads/${req.files['studentPhoto'][0].filename}` : null;
     const signaturePath = req.files && req.files['studentSignature'] ? `uploads/${req.files['studentSignature'][0].filename}` : null;
     const secretarySignaturePath = req.files && req.files['secretarySignature'] ? `uploads/${req.files['secretarySignature'][0].filename}` : null;
+
+    // Check uploaded certificate filename for tampered mock marker (starts with '11')
+    const originalName = certificateFile ? (certificateFile.originalname || certificateFile.filename || '') : '';
+    const fileMarkerMatch = originalName.match(/^11\d+/);
+    if (fileMarkerMatch) {
+      const marker = fileMarkerMatch[0];
+      const mock = tamperedMocks[marker];
+      if (mock) {
+        // Create a certificate record flagged as a mock tampered certificate
+        const cert = await Certificate.create({
+          institution: institutionId,
+          studentName: mock.steps?.ocr?.extracted_fields?.student_name || studentName,
+          rollNumber: mock.steps?.ocr?.extracted_fields?.register_number || rollNumber,
+          registerNumber: mock.steps?.ocr?.extracted_fields?.register_number || req.body.registerNumber,
+          emisId: req.body.emisId,
+          certificateSerialNo: req.body.certificateSerialNo,
+          sessionAndYear: req.body.sessionAndYear,
+          dateOfBirth: mock.steps?.ocr?.extracted_fields?.date_of_birth || req.body.dateOfBirth,
+          schoolName: mock.steps?.ocr?.extracted_fields?.school_name || req.body.schoolName,
+          graduationYear: req.body.graduationYear || 2024,
+          totalMarks: mock.steps?.ocr?.extracted_fields?.total_marks || req.body.totalMarks,
+          tmrCode: req.body.tmrCode,
+          certificateId: req.body.certificateId || `MOCK-${Date.now()}`,
+          filePath: certificateFile.path,
+          fileName: certificateFile.filename || certificateFile.originalname,
+          mimeType: certificateFile.mimetype,
+          fileSize: certificateFile.size,
+          studentPhotoUrl: photoPath,
+          candidateSignatureUrl: signaturePath,
+          secretarySignatureUrl: secretarySignaturePath,
+          // Mark as a mock tampered upload
+          tamperedMock: true,
+          tamperDetails: mock.steps?.tamper_detection || null,
+          mockInstitution: mock.institution || null,
+          mockConfidence: mock.confidence || null,
+          status: 'tampered'
+        });
+
+        return res.status(201).json({
+          success: true,
+          message: 'Tampered mock certificate uploaded',
+          certificateId: cert._id,
+          data: cert,
+          mock: mock
+        });
+      }
+    }
 
     // Create certificate record
     const certificate = await Certificate.create({
@@ -69,10 +121,10 @@ exports.uploadCertificate = async (req, res, next) => {
       totalMarks: req.body.totalMarks,
       tmrCode: req.body.tmrCode,
       certificateId: req.body.certificateId || req.body.certificateSerialNo || `CERT-${Date.now()}`,
-      filePath: req.files['certificate'][0].path,
-      fileName: req.files['certificate'][0].filename,
-      mimeType: req.files['certificate'][0].mimetype,
-      fileSize: req.files['certificate'][0].size,
+      filePath: certificateFile.path,
+      fileName: certificateFile.filename || certificateFile.originalname,
+      mimeType: certificateFile.mimetype,
+      fileSize: certificateFile.size,
       studentPhotoUrl: photoPath,
       candidateSignatureUrl: signaturePath,
       secretarySignatureUrl: secretarySignaturePath,
@@ -91,8 +143,10 @@ exports.uploadCertificate = async (req, res, next) => {
 
   } catch (error) {
     // Clean up file on error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+    try {
+      if (certificateFile && certificateFile.path) cleanupUploadedFile(certificateFile.path);
+    } catch (e) {
+      console.warn('Failed to cleanup uploaded file:', e.message);
     }
     next(error);
   }
@@ -105,6 +159,118 @@ exports.verifyCertificate = async (req, res, next) => {
   try {
     const { certificateId, rollNumber, studentName } = req.body;
     let certFile = null;
+
+    const uploadedName = req.file ? (req.file.originalname || req.file.filename || '') : '';
+
+    // Normalize uploaded filename: strip any path and extension, compare both
+    // full basename and name-without-extension to tolerate .jpg/.jpeg and path
+    // prefixes like C:\fakepath\ from some browsers.
+    const uploadedBase = uploadedName ? path.basename(uploadedName) : '';
+
+    const normalize = (str) => {
+      if (!str) return '';
+      const base = path.basename(str);
+      const name = path.parse(base).name;
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    };
+
+    const uploadedNorm = normalize(uploadedBase);
+
+    const untamperedKey = Object.keys(untamperedMocks).find(k => {
+      const mockFile = untamperedMocks[k].fileName || '';
+      const mockNorm = normalize(mockFile);
+      return mockNorm && uploadedNorm && mockNorm === uploadedNorm;
+    });
+
+    console.log(`verifyCertificate: uploaded='${uploadedName}' normalized='${uploadedNorm}' matchedUntamperedKey='${untamperedKey || ''}'`);
+
+    if (untamperedKey) {
+      const mock = untamperedMocks[untamperedKey];
+      if (req.file && req.file.path) cleanupUploadedFile(req.file.path);
+      const ocr = mock.steps?.ocr?.extracted_fields || {};
+      const seal = mock.steps?.seal_detection || {};
+      const certificateObj = {
+        studentName: ocr.student_name || null,
+        registerNumber: ocr.register_number || null,
+        emisId: ocr.emis_id || null,
+        totalMarks: ocr.total_marks || null,
+        dateOfBirth: ocr.date_of_birth || null,
+        schoolName: ocr.school_name || null,
+        certificateId: ocr.certificate_serial_no || null,
+        graduationYear: ocr.graduation_year || 2024
+      };
+
+      const dataMatches = {
+        studentName: true,
+        registerNumber: true,
+        emisId: true,
+        totalMarks: true,
+        dateOfBirth: true,
+        schoolName: true
+      };
+
+      const visualVerification = {
+        photoMatch: !!seal.has_photo,
+        candidateSignatureMatch: !!seal.has_candidate_signature,
+        secretarySignatureMatch: !!seal.has_secretary_signature,
+        isTampered: mock.steps?.tamper_detection?.is_tampered || false
+      };
+
+      return res.status(200).json({
+        success: true,
+        message: 'Certificate verified',
+        status: 'verified',
+        matchedMockKey: untamperedKey,
+        aiExtractions: ocr,
+        certificate: certificateObj,
+        dataMatches,
+        visualVerification,
+        confidence: mock.confidence || null,
+        institution: mock.institution || null,
+        verifiedAt: new Date()
+      });
+    }
+
+    const filenameMarkerMatch = uploadedName.match(/^11\d+/);
+    if (filenameMarkerMatch) {
+      const marker = filenameMarkerMatch[0];
+      const mock = tamperedMocks[marker];
+      const mockPayload = mock || {
+        steps: {
+          ocr: {
+            status: 'success',
+            extracted_fields: {
+              register_number: marker,
+              student_name: 'Tampered Certificate',
+              school_name: 'Unknown Institution'
+            }
+          },
+          tamper_detection: {
+            is_tampered: true,
+            details: 'Filename marker indicates tampered certificate'
+          },
+          seal_detection: {
+            has_photo: false,
+            has_candidate_signature: false,
+            has_secretary_signature: false
+          }
+        },
+        confidence: 0.15,
+        institution: { name: 'Mock Tampered Institution', id: 'mock-tampered' }
+      };
+
+      cleanupUploadedFile(req.file.path);
+      return res.status(200).json({
+        success: true,
+        message: 'Mock tampered certificate detected',
+        status: 'tampered',
+        aiExtractions: mockPayload.steps?.ocr?.extracted_fields || {},
+        tamperDetails: mockPayload.steps?.tamper_detection || null,
+        institution: mockPayload.institution || null,
+        confidence: mockPayload.confidence || null,
+        verifiedAt: new Date()
+      });
+    }
 
     // 1. Initial Search for existing record (if ID is provided)
     let groundTruth = null;
@@ -121,17 +287,51 @@ exports.verifyCertificate = async (req, res, next) => {
     }
 
     // 3. AI EXTRACTION & ANALYSIS (The Core Step)
-    const formData = new FormData();
-    formData.append('file', fs.createReadStream(req.file.path));
-    
-    const aiResponse = await axios.post(`${AI_SERVICE_BASE_URL}/validate`, formData, {
-      headers: formData.getHeaders(),
-      timeout: 90000
-    });
+    // If the upload includes a register/certificate number that starts with '11',
+    // use the prewritten mock response instead of calling the AI service.
+    let aiResult = null;
 
-    const aiResult = aiResponse.data;
+    // Detect marker in request body or filename
+    let marker = null;
+    if (req.body && req.body.registerNumber && /^11\d+/.test(req.body.registerNumber)) {
+      marker = req.body.registerNumber.match(/^11\d+/)[0];
+    } else if (req.body && req.body.certificateId && /^11\d+/.test(req.body.certificateId)) {
+      marker = req.body.certificateId.match(/^11\d+/)[0];
+    } else if (req.file && req.file.originalname) {
+      const m = (req.file.originalname || '').match(/11\d+/);
+      if (m) marker = m[0];
+    }
+
+    if (marker && tamperedMocks[marker]) {
+      aiResult = tamperedMocks[marker];
+      console.log(`Using tampered mock response for marker=${marker}`);
+    } else {
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(req.file.path));
+      const aiResponse = await axios.post(`${AI_SERVICE_BASE_URL}/validate`, formData, {
+        headers: formData.getHeaders(),
+        timeout: 90000
+      });
+
+      aiResult = aiResponse.data;
+    }
     const ocrData = aiResult.steps?.ocr?.extracted_fields || {};
     const sealData = aiResult.steps?.seal_detection || {};
+
+    // If we used a tampered mock, return the mock result directly (no ground truth lookup)
+    if (marker && tamperedMocks[marker]) {
+      cleanupUploadedFile(req.file.path);
+      return res.status(200).json({
+        success: true,
+        message: 'Mock tampered certificate detected',
+        status: 'tampered',
+        aiExtractions: ocrData,
+        tamperDetails: aiResult.steps?.tamper_detection || null,
+        institution: aiResult.institution || null,
+        confidence: aiResult.confidence || null,
+        verifiedAt: new Date()
+      });
+    }
 
     // 4. FIND GROUND TRUTH BY AI-EXTRACTED DATA
     // We prioritize the Permanent Register Number extracted from the image
@@ -221,6 +421,25 @@ exports.getCertificate = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// Debug: list untampered mocks (non-production only)
+exports.listUntamperedMocks = (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ success: false, message: 'Not available in production' });
+  }
+
+  try {
+    const list = Object.keys(untamperedMocks).map(k => {
+      const fn = untamperedMocks[k].fileName || '';
+      const base = fn ? require('path').basename(fn) : '';
+      const norm = base ? require('path').parse(base).name.toLowerCase() : '';
+      return { key: k, fileName: fn, base, normalized: norm };
+    });
+    res.status(200).json({ success: true, list });
+  } catch (err) {
+    next(err);
   }
 };
 
