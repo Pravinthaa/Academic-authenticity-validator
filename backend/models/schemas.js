@@ -277,8 +277,8 @@ const verificationLogSchema = new mongoose.Schema({
 });
 
 // Create indexes
-verificationLogSchema.index({ queryValue: 1 });
-verificationLogSchema.index({ certificate: 1 });
+// verificationLogSchema.index({ queryValue: 1 });
+// verificationLogSchema.index({ certificate: 1 });
 verificationLogSchema.index({ queryType: 1 });
 verificationLogSchema.index({ result: 1 });
 verificationLogSchema.index({ verifiedBy: 1 });
