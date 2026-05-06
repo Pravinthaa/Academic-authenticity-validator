@@ -44,7 +44,7 @@ const VerifierDashboard = () => {
       const formData = new FormData();
       formData.append('certificate', selectedFile);
 
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001'}/api/certificates/verify`, formData, {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/certificates/verify`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

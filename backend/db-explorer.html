@@ -326,12 +326,12 @@
   </div>
 
   <div id="errorBox" class="error-box" style="display:none">
-    ❌ Could not connect to API. Make sure the backend server is running on port 5001.
+    ❌ Could not connect to API. Make sure the backend server is running on port 5000.
   </div>
 </main>
 
 <footer>
-  VERI-CHAIN DB Explorer &nbsp;·&nbsp; Dev Mode &nbsp;·&nbsp; Data source: <span>localhost:5001/api/dev/db-view</span>
+  VERI-CHAIN DB Explorer &nbsp;·&nbsp; Dev Mode &nbsp;·&nbsp; Data source: <span>localhost:5000/api/dev/db-view</span>
 </footer>
 
 <script>
@@ -347,7 +347,7 @@
 
   async function load() {
     try {
-      const res = await fetch('http://localhost:5001/api/dev/db-view');
+      const res = await fetch('http://localhost:5000/api/dev/db-view');
       if (!res.ok) throw new Error('Bad response');
       const data = await res.json();
 

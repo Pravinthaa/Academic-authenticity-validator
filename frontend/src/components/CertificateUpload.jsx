@@ -3,7 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Upload, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import useAuthStore from '../store/authStore';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export default function CertificateUpload() {
   const [file, setFile] = useState(null);
