@@ -11,7 +11,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [logs, setLogs] = useState([]);
-  const token = useAuthStore(state => state.token);
+  const [reports, setReports] = useState(null);
+  const { token } = useAuthStore();
 
   useEffect(() => {
     fetchDashboardData();
@@ -20,18 +21,22 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [statsResponse, logsResponse] = await Promise.all([
+      const [statsResponse, logsResponse, reportsResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/admin/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API_BASE_URL}/api/admin/activities`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { limit: 20 }
+        }),
+        axios.get(`${API_BASE_URL}/api/admin/reports`, {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
       setStats(statsResponse.data.data);
       setLogs(logsResponse.data.data || []);
+      setReports(reportsResponse.data.data || {});
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -198,6 +203,69 @@ export default function AdminDashboard() {
             <p className="text-gray-400 text-xs mt-2">Not found in database</p>
           </div>
         </div>
+
+        {/* Reports Section */}
+        {reports && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Verification Status Report */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-6">
+              <h2 className="text-white font-bold text-lg mb-6">Verification Status Report</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-300">Valid Certificates</span>
+                  </div>
+                  <span className="text-2xl font-bold text-green-400">{reports.summary?.valid || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-gray-300">Suspicious</span>
+                  </div>
+                  <span className="text-2xl font-bold text-yellow-400">{reports.summary?.suspicious || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-gray-300">Fraudulent</span>
+                  </div>
+                  <span className="text-2xl font-bold text-red-400">{reports.summary?.fraud || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    <span className="text-gray-300">Revoked</span>
+                  </div>
+                  <span className="text-2xl font-bold text-purple-400">{reports.summary?.revoked || 0}</span>
+                </div>
+                <div className="border-t border-purple-500/20 pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 font-semibold">Total Reports</span>
+                    <span className="text-2xl font-bold text-blue-400">{reports.summary?.total || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Institutions Report */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-6">
+              <h2 className="text-white font-bold text-lg mb-6">Institutions by Successful Verifications</h2>
+              <div className="space-y-3 max-h-72 overflow-y-auto">
+                {reports.byInstitution && reports.byInstitution.length > 0 ? (
+                  reports.byInstitution.map((inst, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg">
+                      <span className="text-gray-300 text-sm truncate">{inst._id || 'Unknown Organization'}</span>
+                      <span className="text-blue-400 font-bold ml-2">{inst.count}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-400 text-center py-4">No institution data available</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Recent Logs */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-6">

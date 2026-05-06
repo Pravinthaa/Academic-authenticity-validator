@@ -336,7 +336,13 @@ const Home = () => {
           >INSTITUTION PORTAL</button>
 
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => {
+              if (isAuthenticated && user?.role === 'admin') {
+                navigate('/admin/dashboard');
+              } else {
+                navigate('/login');
+              }
+            }}
             style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)', color: '#fff', padding: '12px 28px', fontSize: 11, letterSpacing: 2, cursor: 'pointer', borderRadius: 3, transition: 'border-color 0.2s, color 0.2s' }}
             onMouseEnter={e => { e.target.style.borderColor = '#f97316'; e.target.style.color = '#f97316'; }}
             onMouseLeave={e => { e.target.style.borderColor = 'rgba(255,255,255,0.3)'; e.target.style.color = '#fff'; }}

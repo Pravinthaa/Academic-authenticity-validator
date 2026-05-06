@@ -10,7 +10,6 @@
  */
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 
 // Load env vars from parent directory
@@ -151,12 +150,12 @@ const seed = async () => {
     const insertedUsers = [];
 
     for (const userData of sampleUsers) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(userData.password, salt);
-
       const user = await User.create({
-        ...userData,
-        password: hashedPassword,
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role,
+        institutionDetails: userData.institutionDetails
       });
 
       // Store institution IDs for linking certificates
@@ -183,29 +182,86 @@ const seed = async () => {
     }
 
     // ── Insert Verification Logs ──────────────────────────────────────────────
-    console.log('\n🔍 Seeding verification logs...');
+    console.log('\n🔍 Seeding verification logs with mock data...');
     const verifierUser = insertedUsers.find((u) => u.email === 'priya@hrfirm.com');
+    const adminUser = insertedUsers.find((u) => u.role === 'admin');
 
-    const verificationLogs = [
-      {
-        certificate: insertedCerts[0]._id,
-        queryValue: '35141174',
+    // Generate logs with various results spanning 30 days
+    const verificationLogs = [];
+    const baseDate = new Date();
+
+    // Valid certificates (60% of queries)
+    for (let i = 0; i < 24; i++) {
+      verificationLogs.push({
+        certificate: insertedCerts[i % insertedCerts.length]._id,
+        queryValue: insertedCerts[i % insertedCerts.length].certificateId,
         queryType: 'certificateId',
         result: 'found',
-        verifiedBy: null,
-        ipAddress: '192.168.1.10',
-        verifierOrganisation: 'State Recruitment Cell',
-      },
-      {
-        certificate: insertedCerts[1]._id,
-        queryValue: '6150917',
+        verifiedBy: verifierUser?._id || null,
+        ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        verifierOrganisation: ['HR Tech Solutions', 'TCS Recruitment', 'Infosys HR', 'Accenture Talent'][Math.floor(Math.random() * 4)],
+        createdAt: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // Suspicious certificates (15% of queries)
+    for (let i = 0; i < 6; i++) {
+      verificationLogs.push({
+        certificate: insertedCerts[i % insertedCerts.length]._id,
+        queryValue: '999-FAKE-' + Math.random().toString(36).substring(7),
         queryType: 'rollNumber',
-        result: 'found',
-        verifiedBy: null,
-        ipAddress: '203.0.113.42',
-        verifierOrganisation: 'Employer Alpha',
-      },
-    ];
+        result: 'suspicious',
+        verifiedBy: adminUser?._id || null,
+        ipAddress: `10.0.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        verifierOrganisation: 'Verification Department',
+        metadata: { suspicionReason: 'Document quality degradation detected' },
+        createdAt: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // Fraudulent certificates (10% of queries)
+    for (let i = 0; i < 4; i++) {
+      verificationLogs.push({
+        certificate: insertedCerts[i % insertedCerts.length]._id,
+        queryValue: 'FORGED-' + (i + 1),
+        queryType: 'upload',
+        result: 'fraud',
+        verifiedBy: adminUser?._id || null,
+        ipAddress: `172.16.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        verifierOrganisation: 'Anti-Fraud Unit',
+        metadata: { fraudType: 'Seal tampering', confidence: 0.95 },
+        createdAt: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // Not found / Invalid certificates (10% of queries)
+    for (let i = 0; i < 4; i++) {
+      verificationLogs.push({
+        certificate: null,
+        queryValue: 'INVALID-CERT-' + (i + 1),
+        queryType: 'certificateId',
+        result: 'not_found',
+        verifiedBy: verifierUser?._id || null,
+        ipAddress: `203.0.113.${Math.floor(Math.random() * 255)}`,
+        verifierOrganisation: 'External Verifier',
+        createdAt: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    // Revoked certificates (5% of queries)
+    for (let i = 0; i < 2; i++) {
+      verificationLogs.push({
+        certificate: insertedCerts[i % insertedCerts.length]._id,
+        queryValue: 'REVOKED-' + (i + 1),
+        queryType: 'certificateId',
+        result: 'revoked',
+        verifiedBy: adminUser?._id || null,
+        ipAddress: `198.51.100.${Math.floor(Math.random() * 255)}`,
+        verifierOrganisation: 'Certificate Authority',
+        metadata: { revocationReason: 'Duplicate issuance detected' },
+        createdAt: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
 
     const insertedLogs = await VerificationLog.insertMany(verificationLogs);
     console.log(`   ✅ ${insertedLogs.length} verification log entries created.`);

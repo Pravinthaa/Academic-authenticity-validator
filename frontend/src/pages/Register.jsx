@@ -79,9 +79,9 @@ const Register = () => {
                 name="role" className="form-input" 
                 value={formData.role} onChange={handleChange}
               >
+                <option value="admin">Government Admin</option>
                 <option value="verifier">Verifier (Employer/Agency)</option>
                 <option value="institution">Educational Institution</option>
-                <option value="admin">Government Admin</option>
               </select>
             </div>
           </div>
