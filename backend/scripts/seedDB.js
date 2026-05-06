@@ -18,6 +18,8 @@ dotenv.config({ path: require('path').join(__dirname, '../.env') });
 const User = require('../models/User');
 const Certificate = require('../models/Certificate');
 const VerificationLog = require('../models/VerificationLog');
+const tamperedMocks = require('../mocks/tamperedMocks');
+const untamperedMocks = require('../mocks/untamperedMocks');
 
 // ─── Sample Data ────────────────────────────────────────────────────────────
 
@@ -265,6 +267,164 @@ const seed = async () => {
 
     const insertedLogs = await VerificationLog.insertMany(verificationLogs);
     console.log(`   ✅ ${insertedLogs.length} verification log entries created.`);
+
+    // ── Insert Mock Samples (tampered & untampered) ─────────────────────────
+    console.log('\n🧪 Seeding mock tampered/untampered samples...');
+    const mockCertMap = {};
+
+    // First, create certificates for untampered mocks
+    const fallbackInstitution = insertedUsers.find((u) => u.role === 'institution')?._id || null;
+    for (const key of Object.keys(untamperedMocks)) {
+      const m = untamperedMocks[key];
+      const certData = {
+        institution: fallbackInstitution,
+        studentName: m.steps.ocr.extracted_fields.student_name,
+        rollNumber: m.steps.ocr.extracted_fields.register_number,
+        registerNumber: m.steps.ocr.extracted_fields.register_number,
+        emisId: m.steps.ocr.extracted_fields.emis_id,
+        certificateSerialNo: m.steps.ocr.extracted_fields.certificate_serial_no,
+        sessionAndYear: m.steps.ocr.extracted_fields.sessionAndYear || 'MAR 2024',
+        dateOfBirth: new Date(m.steps.ocr.extracted_fields.date_of_birth),
+        course: m.course || 'Higher Secondary Course (Class 12)',
+        schoolName: m.steps.ocr.extracted_fields.school_name,
+        graduationYear: 2024,
+        totalMarks: m.steps.ocr.extracted_fields.total_marks,
+        certificateId: m.steps.ocr.extracted_fields.certificate_serial_no || key,
+        issueDate: new Date(),
+        status: 'active',
+        hasPhoto: !!m.steps.seal_detection?.has_photo,
+        hasCandidateSignature: !!m.steps.seal_detection?.has_candidate_signature,
+        hasSecretarySignature: !!m.steps.seal_detection?.has_secretary_signature,
+        aiConfidence: typeof m.confidence === 'number' ? m.confidence : 0,
+        ocrData: {
+          extractedText: JSON.stringify(m.steps.ocr.extracted_fields),
+          confidence: typeof m.confidence === 'number' ? m.confidence : 0,
+          extractedAt: new Date()
+        }
+      };
+
+      try {
+        const cert = await Certificate.create(certData);
+        mockCertMap[key] = cert._id;
+        // create a matching verification log (authentic)
+        await VerificationLog.create({
+          certificate: cert._id,
+          queryValue: key,
+          queryType: 'certificateId',
+          result: 'found',
+          verifiedBy: null,
+          ipAddress: '127.0.0.1',
+          verifierOrganisation: m.institution?.name || 'Mock Institution',
+          metadata: {
+            steps: JSON.stringify(m.steps),
+            confidence: String(m.confidence ?? '')
+          },
+          aiExtractions: {
+            studentName: m.steps.ocr.extracted_fields.student_name,
+            registerNumber: m.steps.ocr.extracted_fields.register_number,
+            emisId: m.steps.ocr.extracted_fields.emis_id,
+            totalMarks: m.steps.ocr.extracted_fields.total_marks,
+            dateOfBirth: m.steps.ocr.extracted_fields.date_of_birth,
+            schoolName: m.steps.ocr.extracted_fields.school_name
+          },
+          visualVerification: {
+            photoMatch: true,
+            candidateSignatureMatch: true,
+            secretarySignatureMatch: true,
+            isTampered: false
+          },
+          confidence: typeof m.confidence === 'number' ? m.confidence : 0,
+          createdAt: new Date()
+        });
+      } catch (err) {
+        // Handle duplicate certificate (already inserted earlier) by linking to existing
+        if (err && err.code === 11000) {
+          try {
+            const existing = await Certificate.findOne({ certificateId: certData.certificateId });
+            if (existing) {
+              mockCertMap[key] = existing._id;
+              await VerificationLog.create({
+                certificate: existing._id,
+                queryValue: key,
+                queryType: 'certificateId',
+                result: 'found',
+                verifiedBy: null,
+                ipAddress: '127.0.0.1',
+                verifierOrganisation: m.institution?.name || 'Mock Institution',
+                metadata: {
+                  steps: JSON.stringify(m.steps),
+                  confidence: String(m.confidence ?? '')
+                },
+                aiExtractions: {
+                  studentName: m.steps.ocr.extracted_fields.student_name,
+                  registerNumber: m.steps.ocr.extracted_fields.register_number,
+                  emisId: m.steps.ocr.extracted_fields.emis_id,
+                  totalMarks: m.steps.ocr.extracted_fields.total_marks,
+                  dateOfBirth: m.steps.ocr.extracted_fields.date_of_birth,
+                  schoolName: m.steps.ocr.extracted_fields.school_name
+                },
+                visualVerification: {
+                  photoMatch: true,
+                  candidateSignatureMatch: true,
+                  secretarySignatureMatch: true,
+                  isTampered: false
+                },
+                confidence: typeof m.confidence === 'number' ? m.confidence : 0,
+                createdAt: new Date()
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to link to existing certificate for mock', key, e.message);
+          }
+        } else {
+          console.warn('Failed to insert mock untampered cert', key, err.message);
+        }
+      }
+    }
+
+    // Next, create logs for tampered mocks (link to existing cert if possible)
+    for (const key of Object.keys(tamperedMocks)) {
+      const m = tamperedMocks[key];
+      const linkedCertId = mockCertMap[key] || null;
+      const result = m.steps.tamper_detection?.is_tampered ? 'suspicious' : 'found';
+
+      try {
+        await VerificationLog.create({
+          certificate: linkedCertId,
+          queryValue: key,
+          queryType: 'upload',
+          result,
+          verifiedBy: null,
+          ipAddress: '127.0.0.' + Math.floor(Math.random() * 255),
+          verifierOrganisation: m.institution?.name || 'Mock Institution',
+          metadata: {
+            tamper_details: m.steps.tamper_detection?.details || '',
+            steps: JSON.stringify(m.steps),
+            confidence: String(m.confidence ?? '')
+          },
+          aiExtractions: {
+            studentName: m.steps.ocr.extracted_fields.student_name,
+            registerNumber: m.steps.ocr.extracted_fields.register_number,
+            emisId: m.steps.ocr.extracted_fields.emis_id,
+            totalMarks: m.steps.ocr.extracted_fields.total_marks,
+            dateOfBirth: m.steps.ocr.extracted_fields.date_of_birth,
+            schoolName: m.steps.ocr.extracted_fields.school_name
+          },
+          visualVerification: {
+            photoMatch: !!m.steps.seal_detection?.has_photo,
+            candidateSignatureMatch: !!m.steps.seal_detection?.has_candidate_signature,
+            secretarySignatureMatch: !!m.steps.seal_detection?.has_secretary_signature,
+            isTampered: !!m.steps.tamper_detection?.is_tampered
+          },
+          confidence: typeof m.confidence === 'number' ? m.confidence : 0,
+          createdAt: new Date()
+        });
+      } catch (err) {
+        console.warn('Failed to insert mock tampered log', key, err.message);
+      }
+    }
+
+    console.log('   ✅ Mock samples seeded (tampered & untampered).');
 
     // ── Summary ───────────────────────────────────────────────────────────────
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

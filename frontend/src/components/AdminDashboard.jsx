@@ -277,6 +277,7 @@ export default function AdminDashboard() {
                   <th className="text-left py-3 px-4 text-purple-300">Activity</th>
                   <th className="text-left py-3 px-4 text-purple-300">Query</th>
                   <th className="text-left py-3 px-4 text-purple-300">Result</th>
+                  <th className="text-left py-3 px-4 text-purple-300">Confidence</th>
                   <th className="text-left py-3 px-4 text-purple-300">Verified By</th>
                   <th className="text-left py-3 px-4 text-purple-300">Date</th>
                 </tr>
@@ -290,6 +291,7 @@ export default function AdminDashboard() {
                         <td className="py-3 px-4 text-gray-300 capitalize">{log.queryType || 'lookup'}</td>
                         <td className="py-3 px-4 text-gray-300">{log.queryValue}</td>
                         <td className="py-3 px-4 text-gray-300">{log.result}</td>
+                        <td className="py-3 px-4 text-gray-300">{log.metadata?.confidence ? `${Math.round(log.metadata.confidence * 100)}%` : '-'}</td>
                         <td className="py-3 px-4 text-gray-300">{userName}</td>
                         <td className="py-3 px-4 text-gray-400">{new Date(log.createdAt).toLocaleDateString()}</td>
                       </tr>
