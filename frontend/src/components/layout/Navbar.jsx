@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
-import { ShieldCheck, LogOut, User as UserIcon, Upload, Search, BarChart3 } from 'lucide-react';
+import { ShieldCheck, LogOut, User as UserIcon, Upload, Search, BarChart3, Globe } from 'lucide-react';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -36,6 +36,12 @@ const Navbar = () => {
           <div className="hidden md:flex gap-6 items-center">
             {isAuthenticated && (
               <>
+                {/* Dashboard Link (for all roles) */}
+                <Link to={getDashboardLink()} className="flex items-center gap-2 text-gray-300 hover:text-purple-300 transition-colors text-sm">
+                  <BarChart3 size={16} />
+                  Dashboard
+                </Link>
+
                 {/* Public Verification Link (for all roles) */}
                 <Link to="/verify" className="flex items-center gap-2 text-gray-300 hover:text-purple-300 transition-colors text-sm">
                   <Search size={16} />
@@ -52,10 +58,16 @@ const Navbar = () => {
 
                 {/* Admin Links */}
                 {user?.role === 'admin' && (
-                  <Link to="/admin/dashboard" className="flex items-center gap-2 text-gray-300 hover:text-purple-300 transition-colors text-sm">
-                    <BarChart3 size={16} />
-                    Admin
-                  </Link>
+                  <>
+                    <Link to="/admin/dashboard" className="flex items-center gap-2 text-gray-300 hover:text-purple-300 transition-colors text-sm">
+                      <BarChart3 size={16} />
+                      Admin
+                    </Link>
+                    <Link to="/government" className="flex items-center gap-2 text-gray-300 hover:text-purple-300 transition-colors text-sm">
+                      <Globe size={16} />
+                      Government
+                    </Link>
+                  </>
                 )}
               </>
             )}
