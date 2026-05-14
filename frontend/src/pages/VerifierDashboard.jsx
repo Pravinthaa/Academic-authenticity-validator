@@ -14,6 +14,94 @@ const SIDEBAR_ITEMS = [
   { id: 'help',    label: 'How It Works',     icon: HelpCircle },
 ];
 
+const MOCK_HISTORY = [
+  { id: 1, file: 'NITHISH_S.jpeg', name: 'NITHISH S', regNo: '2313191764', status: 'verified', date: 'Just now' },
+  { id: 2, file: '1100006.jpeg', name: 'Unknown Document', regNo: '1100006', status: 'tampered', date: 'Just now' },
+  { id: 3, file: 'THIRUVARASAN_R_K.jpeg', name: 'THIRUVARASAN R K', regNo: '2311893325', status: 'verified', date: 'Just now' },
+  { id: 4, file: '1100007.jpeg', name: 'Unknown Document', regNo: '1100007', status: 'tampered', date: '2 mins ago' },
+  { id: 5, file: 'KAVIN_V.jpeg', name: 'KAVIN V', regNo: '2312674401', status: 'verified', date: '5 mins ago' },
+  { id: 6, file: '1100001.jpeg', name: 'Unknown Document', regNo: '1100001', status: 'tampered', date: '12 mins ago' },
+  { id: 7, file: '1100002.jpeg', name: 'Unknown Document', regNo: '1100002', status: 'tampered', date: '1 hour ago' },
+  { id: 8, file: '1100003.jpeg', name: 'Unknown Document', regNo: '1100003', status: 'tampered', date: '3 hours ago' },
+  { id: 9, file: '1100004.jpeg', name: 'Unknown Document', regNo: '1100004', status: 'tampered', date: '5 hours ago' },
+  { id: 10, file: '1100005.jpeg', name: 'Unknown Document', regNo: '1100005', status: 'tampered', date: '1 day ago' },
+];
+
+const HistoryCard = ({ item }) => (
+  <div style={{
+    background: 'rgba(255,255,255,0.03)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    transition: 'transform 0.2s ease, border-color 0.2s ease',
+    cursor: 'pointer'
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = 'translateY(-4px)';
+    e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.4)';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = 'none';
+    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+  }}
+  >
+    <div style={{
+      height: '160px',
+      width: '100%',
+      background: `url(${item.file.startsWith('blob:') ? item.file : `/mock-certs/${item.file}`}) center/cover no-repeat`,
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      position: 'relative'
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        right: '12px',
+        background: item.status === 'verified' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
+        color: '#fff',
+        padding: '4px 10px',
+        borderRadius: '20px',
+        fontSize: '11px',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        backdropFilter: 'blur(4px)'
+      }}>
+        {item.status === 'verified' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+        {item.status === 'verified' ? 'Authentic' : 'Tampered'}
+      </div>
+    </div>
+    <div style={{ padding: '20px' }}>
+      <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
+        {item.name}
+      </h3>
+      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px' }}>
+        Reg No: {item.regNo}
+      </p>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        paddingTop: '16px',
+        fontSize: '12px',
+        color: 'rgba(255,255,255,0.4)'
+      }}>
+        <span>Verified: {item.date}</span>
+        <span style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          color: '#f97316'
+        }}>
+          View Details
+        </span>
+      </div>
+    </div>
+  </div>
+);
+
 const VerifierDashboard = () => {
   const { token, user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('verify');
@@ -21,6 +109,7 @@ const VerifierDashboard = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState(MOCK_HISTORY);
   const fileRef = useRef();
 
   const handleFile = (file) => {
@@ -65,7 +154,7 @@ const VerifierDashboard = () => {
         graduationYear: extracted.graduation_year || 2024
       };
 
-      setResult({
+      const newResult = {
         status: isTampered ? 'tampered' : 'verified',
         ocrConfidence: isTampered
           ? Math.round((responseData.confidence || 0) * 100)
@@ -90,7 +179,21 @@ const VerifierDashboard = () => {
               totalMarks: cert.totalMarks ? `${cert.totalMarks} / 600` : (cert.totalMarks || ''),
               certificateId: cert.certificateId || ''
             }
-      });
+      };
+
+      setResult(newResult);
+
+      // Add to real-time history
+      const newHistoryRecord = {
+        id: Date.now(),
+        file: URL.createObjectURL(selectedFile),
+        name: newResult.details.studentName,
+        regNo: newResult.details.registerNumber || newResult.details.rollNumber || 'Unknown',
+        status: newResult.status,
+        date: 'Just now'
+      };
+      setHistory(prev => [newHistoryRecord, ...prev]);
+
     } catch (error) {
       toast.error(error.response?.data?.message || 'Verification failed');
       setResult({
@@ -507,6 +610,28 @@ const VerifierDashboard = () => {
                 )}
               </div>
             </div>
+
+            {/* Real-time Recent History Section */}
+            <div style={{ marginTop: '64px', animation: 'fadeIn 0.5s ease 0.2s backwards' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#fff' }}>Recent Activity</h2>
+                <button 
+                  onClick={() => setActiveTab('history')}
+                  style={{
+                    background: 'none', border: 'none', color: '#f97316', fontSize: '13px', cursor: 'pointer', fontWeight: 500, padding: 0
+                  }}>View Full History &rarr;</button>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '24px'
+              }}>
+                {history.slice(0, 3).map((item) => (
+                  <HistoryCard key={item.id} item={item} />
+                ))}
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -536,26 +661,13 @@ const VerifierDashboard = () => {
               </div>
             </div>
             <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
-              padding: '32px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '300px'
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '24px'
             }}>
-              <History size={48} style={{
-                color: 'rgba(255,255,255,0.4)',
-                marginBottom: '16px',
-                opacity: 0.4
-              }} />
-              <p style={{
-                fontSize: '14px',
-                color: 'rgba(255,255,255,0.6)'
-              }}>No verification history yet.</p>
+              {history.map((item) => (
+                <HistoryCard key={item.id} item={item} />
+              ))}
             </div>
           </div>
         )}
