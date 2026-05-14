@@ -216,13 +216,76 @@ exports.verifyCertificate = async (req, res, next) => {
         isTampered: mock.steps?.tamper_detection?.is_tampered || false
       };
 
+      // Store in Certificate table (mock case)
+      let savedCertificate = null;
+      try {
+        const logFile = path.join(__dirname, '../debug_verify.log');
+        fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] Verifying mock: ${untamperedKey}\n`);
+        
+        // Try to find the official record to get a valid institution ID
+        const groundTruth = await StudentRegistry.findOne({ registerNumber: ocr.register_number }).populate('institution');
+        fs.appendFileSync(logFile, `Found GroundTruth: ${!!groundTruth}, Institution: ${groundTruth?.institution?._id || groundTruth?.institution || 'NONE'}\n`);
+        
+        // Find a default institution in case groundTruth has a broken link
+        let fallbackInstitution = null;
+        if (!groundTruth?.institution) {
+          const admin = await User.findOne({ role: 'admin' });
+          fallbackInstitution = admin?._id;
+        }
+
+        const certData = {
+          institution: groundTruth?.institution?._id || groundTruth?.institution || fallbackInstitution,
+          studentName: ocr.student_name,
+          registerNumber: ocr.register_number,
+          emisId: ocr.emis_id,
+          certificateSerialNo: ocr.certificate_serial_no,
+          sessionAndYear: ocr.session_and_year || 'MAR 2024',
+          dateOfBirth: ocr.date_of_birth,
+          schoolName: ocr.school_name,
+          graduationYear: ocr.graduation_year || 2024,
+          totalMarks: ocr.total_marks,
+          certificateId: ocr.certificate_serial_no,
+          status: 'active',
+          verificationStatus: 'verified',
+          aiConfidence: mock.confidence,
+          ocrData: {
+            extractedText: JSON.stringify(ocr),
+            confidence: mock.confidence,
+            extractedAt: new Date()
+          },
+          hasPhoto: visualVerification.photoMatch,
+          hasCandidateSignature: visualVerification.candidateSignatureMatch,
+          hasSecretarySignature: visualVerification.secretarySignatureMatch
+        };
+
+        // Only save if we have a valid institution link
+        if (certData.institution) {
+          // Use replaceOne to force the field order in MongoDB BSON
+          await Certificate.replaceOne(
+            { registerNumber: certData.registerNumber },
+            certData,
+            { upsert: true }
+          );
+          // Fetch the saved doc to get the _id for logging
+          savedCertificate = await Certificate.findOne({ registerNumber: certData.registerNumber });
+          
+          fs.appendFileSync(logFile, `SUCCESS: Stored Certificate ID: ${savedCertificate?._id}\n`);
+          console.log(`Mock Certificate stored/updated for RegNo: ${certData.registerNumber}`);
+        } else {
+          fs.appendFileSync(logFile, `SKIPPED: No Institution ID found for RegNo: ${ocr.register_number}\n`);
+        }
+      } catch (storeError) {
+        fs.appendFileSync(logFile, `ERROR during storage: ${storeError.message}\n`);
+        console.warn('Failed to store mock certificate details:', storeError.message);
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Certificate verified',
         status: 'verified',
         matchedMockKey: untamperedKey,
         aiExtractions: ocr,
-        certificate: certificateObj,
+        certificate: savedCertificate || certificateObj,
         dataMatches,
         visualVerification,
         confidence: mock.confidence || null,
@@ -334,49 +397,104 @@ exports.verifyCertificate = async (req, res, next) => {
     }
 
     // 4. FIND GROUND TRUTH BY AI-EXTRACTED DATA
-    // We prioritize the Permanent Register Number extracted from the image
     const regNo = ocrData.register_number || req.body.registerNumber;
     groundTruth = await StudentRegistry.findOne({ registerNumber: regNo }).populate('institution');
 
-    if (!groundTruth) {
-      cleanupUploadedFile(req.file.path);
-      return res.status(404).json({
-        success: false,
-        status: 'INVALID',
-        message: 'No official board record found for this Register Number. Certificate is likely a forgery.',
-        aiExtractions: ocrData
-      });
-    }
-
-    // 5. DATA MATCHING (Textual Comparison)
-    const dataMatches = {
+    // 5. DATA MATCHING & VISUAL VERIFICATION
+    const dataMatches = groundTruth ? {
       studentName: ocrData.student_name?.toLowerCase().includes(groundTruth.studentName.toLowerCase()) || groundTruth.studentName.toLowerCase().includes(ocrData.student_name?.toLowerCase()),
       registerNumber: ocrData.register_number === groundTruth.registerNumber,
       emisId: ocrData.emis_id === groundTruth.emisId,
       totalMarks: ocrData.total_marks === groundTruth.totalMarks,
       dateOfBirth: ocrData.date_of_birth === groundTruth.dateOfBirth,
       schoolName: ocrData.school_name?.toLowerCase().includes(groundTruth.schoolName.toLowerCase()) || groundTruth.schoolName.toLowerCase().includes(ocrData.school_name?.toLowerCase())
+    } : {
+      studentName: false, registerNumber: false, emisId: false, totalMarks: false, dateOfBirth: false, schoolName: false
     };
 
-    // 6. VISUAL VERIFICATION (AI Results)
     const visualVerification = {
-      photoMatch: sealData.has_photo && !!groundTruth.studentPhotoUrl,
-      candidateSignatureMatch: sealData.has_candidate_signature && !!groundTruth.candidateSignatureUrl,
+      photoMatch: groundTruth ? (sealData.has_photo && !!groundTruth.studentPhotoUrl) : false,
+      candidateSignatureMatch: groundTruth ? (sealData.has_candidate_signature && !!groundTruth.candidateSignatureUrl) : false,
       secretarySignatureMatch: sealData.has_secretary_signature,
       isTampered: aiResult.steps?.tamper_detection?.is_tampered || false
     };
 
-    // 7. FINAL LOGGING
-    const allTextMatch = Object.values(dataMatches).every(v => v === true);
+    const allTextMatch = groundTruth ? Object.values(dataMatches).every(v => v === true) : false;
     const allVisualMatch = visualVerification.photoMatch && visualVerification.candidateSignatureMatch && visualVerification.secretarySignatureMatch;
 
+    // 8. STORE EXTRACTED DETAILS IN CERTIFICATE TABLE
+    // This ensures verified certificates are recorded in the main digital registry
+    let savedCertificate = null;
+    try {
+      const logFile = path.join(__dirname, '../debug_verify.log');
+      fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] Verifying real AI: RegNo=${regNo}\n`);
+
+      // Find a default institution in case groundTruth has a broken link
+      let fallbackInstitution = null;
+      if (!groundTruth?.institution) {
+        const admin = await User.findOne({ role: 'admin' });
+        fallbackInstitution = admin?._id;
+      }
+
+      const certData = {
+        institution: groundTruth?.institution?._id || groundTruth?.institution || fallbackInstitution,
+        studentName: ocrData.student_name || groundTruth?.studentName,
+        rollNumber: ocrData.roll_number || groundTruth?.rollNumber || ocrData.register_number || groundTruth?.registerNumber,
+        registerNumber: ocrData.register_number || groundTruth?.registerNumber,
+        emisId: ocrData.emis_id || groundTruth?.emisId,
+        certificateSerialNo: ocrData.certificate_serial_no || groundTruth?.certificateSerialNo,
+        sessionAndYear: ocrData.session_and_year || groundTruth?.sessionAndYear,
+        dateOfBirth: ocrData.date_of_birth || groundTruth?.dateOfBirth,
+        course: ocrData.course || groundTruth?.course || "Higher Secondary Course (Class 12)",
+        schoolName: ocrData.school_name || groundTruth?.schoolName,
+        groupCode: ocrData.group_code || groundTruth?.groupCode || "2503 / GENERAL EDUCATION",
+        mediumOfInstruction: ocrData.medium_of_instruction || groundTruth?.mediumOfInstruction || "ENGLISH",
+        tmrCode: ocrData.tmr_code || groundTruth?.tmrCode || "N/A",
+        graduationYear: ocrData.graduation_year || groundTruth?.graduationYear || 2024,
+        totalMarks: ocrData.total_marks || groundTruth?.totalMarks,
+        grade: ocrData.grade || groundTruth?.grade || "N/A",
+        issueDate: groundTruth?.issueDate || new Date(),
+        certificateId: ocrData.certificate_serial_no || groundTruth?.certificateSerialNo,
+        status: groundTruth?.status || 'active',
+        verificationStatus: (allTextMatch && allVisualMatch && !visualVerification.isTampered) ? 'verified' : 'suspicious',
+        tamperFlags: groundTruth?.tamperFlags || [],
+        ocrData: {
+          extractedText: JSON.stringify(ocrData),
+          confidence: aiResult.confidence,
+          extractedAt: new Date()
+        },
+        hasPhoto: visualVerification.photoMatch,
+        hasCandidateSignature: visualVerification.candidateSignatureMatch,
+        hasSecretarySignature: visualVerification.secretarySignatureMatch,
+        aiConfidence: aiResult.confidence,
+        secretarySignatureUrl: groundTruth?.secretarySignatureUrl || "/assets/signatures/secretary_default.png",
+        marks: groundTruth?.marks || []
+      };
+
+      // Use replaceOne to force the field order in MongoDB BSON
+      await Certificate.replaceOne(
+        { registerNumber: certData.registerNumber },
+        certData,
+        { upsert: true }
+      );
+      // Fetch the saved doc to get the _id for logging
+      savedCertificate = await Certificate.findOne({ registerNumber: certData.registerNumber });
+
+      fs.appendFileSync(logFile, `SUCCESS: Stored Certificate ID: ${savedCertificate?._id}\n`);
+      console.log(`Certificate stored/updated for RegNo: ${certData.registerNumber}`);
+    } catch (storeError) {
+      fs.appendFileSync(logFile, `ERROR during storage: ${storeError.message}\n`);
+      console.warn('Failed to store certificate details during verification:', storeError.message);
+    }
+
+    // 9. FINAL LOGGING
     const verificationLog = await VerificationLog.create({
       queryValue: regNo,
       queryType: 'registerNumber',
-      result: allTextMatch && allVisualMatch ? 'found' : 'suspicious',
+      result: (allTextMatch && allVisualMatch && !visualVerification.isTampered) ? 'found' : 'suspicious',
       verifiedBy: req.user ? req.user.id : null,
       ipAddress: req.ip || req.connection.remoteAddress,
-      certificate: groundTruth._id,
+      certificate: savedCertificate ? savedCertificate._id : groundTruth._id,
       aiExtractions: ocrData,
       visualVerification: visualVerification,
       confidence: aiResult.confidence
@@ -534,7 +652,14 @@ exports.getVerificationStats = async (req, res, next) => {
     const revokedCertificates = await Certificate.countDocuments({ status: 'revoked' });
     const totalVerifications = await VerificationLog.countDocuments();
     const foundVerifications = await VerificationLog.countDocuments({ result: 'found' });
-    const suspiciousVerifications = await VerificationLog.countDocuments({ result: 'not_found' });
+    const suspiciousVerifications = await VerificationLog.countDocuments({ result: 'suspicious' });
+    const totalInstitutions = await User.countDocuments({ role: 'institution' });
+
+    // Recent alerts (suspicious verifications)
+    const recentAlerts = await VerificationLog.find({ result: 'suspicious' })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('certificate');
 
     // Verification trend (last 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -556,8 +681,33 @@ exports.getVerificationStats = async (req, res, next) => {
           notFound: suspiciousVerifications,
           recentSevenDays: recentVerifications
         },
-        verificationRate: totalCertificates > 0 ? ((foundVerifications / totalVerifications) * 100).toFixed(2) : 0
+        institutions: {
+          total: totalInstitutions
+        },
+        alerts: recentAlerts,
+        verificationRate: totalVerifications > 0 ? ((foundVerifications / totalVerifications) * 100).toFixed(2) : 0
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get recent certificates
+// @route   GET /api/certificates/recent
+// @access  Private (Admin only)
+exports.getRecentCertificates = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const certificates = await Certificate.find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('institution', 'name email');
+
+    res.status(200).json({
+      success: true,
+      count: certificates.length,
+      data: certificates
     });
   } catch (error) {
     next(error);

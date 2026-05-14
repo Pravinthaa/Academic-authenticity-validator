@@ -39,28 +39,13 @@ class OCRExtractor:
             
             # Convert to grayscale
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            logger.debug("Converted to grayscale")
             
-            # Apply bilateral filter for denoising (preserves edges)
-            denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+            # Simple thresholding is often better for clear documents
+            # Use adaptive thresholding instead of Otsu's for more robustness
+            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
             
-            # Apply CLAHE for contrast enhancement
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            enhanced = clahe.apply(denoised)
-            
-            # Gaussian blur
-            blurred = cv2.GaussianBlur(enhanced, (3, 3), 0)
-            
-            # Thresholding (Otsu's binarization for adaptive threshold)
-            _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            
-            # Morphological operations to clean up
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-            cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-            cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel)
-            
-            # Resize to target size
-            preprocessed = cv2.resize(cleaned, target_size)
+            # Resize slightly to improve character recognition
+            preprocessed = cv2.resize(binary, target_size)
             
             logger.debug(f"Image preprocessed to {target_size}")
             return preprocessed
@@ -69,13 +54,13 @@ class OCRExtractor:
             logger.error(f"Error during image preprocessing: {e}")
             return None
     
-    def extract_text(self, image_path, preprocess=True):
+    def extract_text(self, image_path, preprocess=False):
         """
         Extract all text from image using Tesseract
         
         Args:
             image_path: Path to certificate image
-            preprocess: Whether to preprocess image first
+            preprocess: Whether to preprocess image first (default False for clear docs)
         
         Returns:
             Extracted text or empty string
@@ -84,7 +69,6 @@ class OCRExtractor:
             if preprocess:
                 img_array = self.preprocess_image(image_path)
                 if img_array is None:
-                    # Fallback to raw image
                     img = Image.open(image_path)
                 else:
                     img = Image.fromarray(img_array)
@@ -106,26 +90,23 @@ class OCRExtractor:
     
     def extract_structured_fields(self, image_path):
         """
-        Extract structured certificate fields:
-        - Student name
-        - Roll number
-        - Institution name
-        - Course name
-        - Issue date
-        
-        Returns:
-            Dictionary with extracted fields
+        Extract structured certificate fields
         """
         try:
-            text = self.extract_text(image_path, preprocess=True)
+            text = self.extract_text(image_path, preprocess=False)
             
+            # Additional fallback with preprocessing if raw text is too short
+            if len(text) < 100:
+                logger.info("Raw OCR text too short, trying with preprocessing...")
+                text = self.extract_text(image_path, preprocess=True)
+
             fields = {
                 'student_name': self._extract_student_name(text),
                 'roll_number': self._extract_roll_number(text),
                 'register_number': self._extract_register_number(text),
                 'emis_id': self._extract_emis_id(text),
                 'certificate_serial_no': self._extract_serial_no(text),
-                'session_year': self._extract_session(text),
+                'session_and_year': self._extract_session(text),
                 'school_name': self._extract_school(text),
                 'total_marks': self._extract_total_marks(text),
                 'date_of_birth': self._extract_dob(text),
@@ -133,6 +114,10 @@ class OCRExtractor:
                 'full_text': text,
             }
             
+            # Clean up student name if it contains "NAME OF THE CANDIDATE"
+            if "NAME OF THE" in fields['student_name']:
+                 fields['student_name'] = fields['student_name'].split("CANDIDATE")[-1].strip()
+
             logger.info(f"Structured fields extracted")
             return fields
         
@@ -157,33 +142,46 @@ class OCRExtractor:
     
     def _extract_student_name(self, text):
         """Extract student name from text"""
-        # Simple heuristic: look for "name" or "student" followed by a word
         patterns = [
+            r'NAME OF THE CANDIDATE\s*(.*?)\n([A-Z\s]+)',
             r'(?:Name|Student|Candidate)\s*[:=]?\s*([A-Z][a-zA-Z\s]+)',
-            r'(?:Name|Student|Candidate)\s*([A-Z][a-zA-Z\s]+)',
         ]
         
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                name = match.group(1).strip()
-                # Take first 2-4 words as name
+                # If there are two groups, second one is often the actual name in multi-line cases
+                name = match.group(2).strip() if len(match.groups()) > 1 else match.group(1).strip()
+                # If it's a "MARK CERTIFICATE" placeholder or similar, skip
+                if "MARK CERTIFICATE" in name:
+                     # Try to find the line that actually looks like a name
+                     lines = text.split('\n')
+                     for i, line in enumerate(lines):
+                         if "NAME OF THE CANDIDATE" in line:
+                             if i + 1 < len(lines):
+                                 name = lines[i+1].strip()
+                                 if not name and i + 2 < len(lines):
+                                     name = lines[i+2].strip()
+                
+                # Take first few words
                 words = name.split()[:4]
                 return ' '.join(words)
         
+        # Fallback: look for uppercase names in a specific block
         return ""
     
     def _extract_roll_number(self, text):
         """Extract roll number from text"""
         patterns = [
-            r'([67]\d{6})\s+MAR\s+\d{4}', # Pattern seen in image: 6150916 MAR 2024
+            r'([67]\d{6})\s+MAR\s+\d{4}',
+            r'ROLL\s*NO\s*\.?\s*OF\s*PASSING\s*(.*?)\n\s*(\d{7})',
             r'(?:Roll\s*No|Registration|Reg\s*No|Student\s*ID)\s*[:=]?\s*([A-Z0-9\-/]+)',
         ]
         
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                return match.group(1).strip()
+                return match.group(len(match.groups())).strip()
         
         return ""
 
@@ -191,6 +189,7 @@ class OCRExtractor:
         """Extract permanent register number (10 digits)"""
         patterns = [
             r'PERMANENT REGISTER NUMBER\s+(\d{10})',
+            r'PERMANENT REGISTER NO\s+(\d{10})',
             r'REGISTER\s+NUMBER\s+(\d{10})',
             r'(\d{10})'
         ]
@@ -203,14 +202,18 @@ class OCRExtractor:
     def _extract_emis_id(self, text):
         """Extract EMIS ID No."""
         match = re.search(r'EMIS ID No\.\s*(\d+)', text, re.IGNORECASE)
+        if not match:
+             match = re.search(r'EMIS\s*ID\s*No\s*\.?\s*(\d+)', text, re.IGNORECASE)
         return match.group(1).strip() if match else ""
 
     def _extract_serial_no(self, text):
         """Extract Certificate SL No."""
+        # Top right pattern
+        match = re.search(r'(\d{8})', text)
+        if match:
+            return match.group(1).strip()
+        
         match = re.search(r'CERTIFICATE SL\. NO\s*[:]\s*HSS\s*(\d+)', text, re.IGNORECASE)
-        if not match:
-            # Look for the top right large number
-            match = re.search(r'HSS\s*(\d{8})', text)
         return match.group(1).strip() if match else ""
 
     def _extract_session(self, text):
@@ -220,19 +223,51 @@ class OCRExtractor:
 
     def _extract_school(self, text):
         """Extract School Name"""
-        match = re.search(r'NAME OF THE SCHOOL\s*(.*?)\n', text, re.IGNORECASE | re.DOTALL)
-        if match:
-            return match.group(1).strip().replace('\n', ' ')
+        patterns = [
+            r'NAME OF THE SCHOOL\s*(.*?)\n',
+            r'NAME OF THE SCHOOL\s*\n\s*([A-Z][A-Z\s\.,\-\&]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                school = match.group(len(match.groups())).strip().replace('\n', ' ')
+                if "FBG" in school:
+                    school = school.split("FBG")[0].strip()
+                if school:
+                    return school
+
+        # Fallback: line-by-line search
+        lines = text.split('\n')
+        for i, line in enumerate(lines):
+            if "NAME OF THE SCHOOL" in line:
+                if i + 1 < len(lines):
+                    school = lines[i+1].strip()
+                    if not school and i + 2 < len(lines):
+                        school = lines[i+2].strip()
+                    return school
         return ""
 
     def _extract_total_marks(self, text):
         """Extract Total Marks (numeric)"""
-        match = re.search(r'TOTAL MARKS\s*[:]\s*(\d{4})', text, re.IGNORECASE)
-        return match.group(1).strip() if match else ""
+        # Look for the last occurrence of total marks (usually the final year)
+        matches = re.findall(r'TOTAL MARKS\s*[:]?\s*(\d{4})', text, re.IGNORECASE)
+        if matches:
+            return matches[-1]
+        
+        # Fallback for "TOTAL MARKS 0590" format
+        match = re.search(r'TOTAL\s*MARKS\s*(.*?)\s*(\d{4})', text, re.IGNORECASE)
+        if match:
+            return match.group(2)
+        
+        return ""
 
     def _extract_dob(self, text):
         """Extract Date of Birth"""
         match = re.search(r'DATE OF BIRTH\s*(\d{2}/\d{2}/\d{4})', text, re.IGNORECASE)
+        if not match:
+             # Look for just the date pattern
+             match = re.search(r'(\d{2}/\d{2}/\d{4})', text)
         return match.group(1).strip() if match else ""
     
     def _extract_institution(self, text):

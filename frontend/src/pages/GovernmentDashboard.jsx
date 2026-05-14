@@ -71,12 +71,37 @@ const ALERTS = [
 ];
 
 const GovernmentDashboard = () => {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [rangeFilter, setRangeFilter] = useState('30d');
+  const [stats, setStats] = useState(null);
+  const [recentCerts, setRecentCerts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const chartBars = [40, 60, 45, 80, 50, 95, 70, 65, 85, 60, 100, 80];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, certsRes] = await Promise.all([
+          import('axios').then(m => m.default.get('http://localhost:5000/api/certificates/stats/overview', {
+            headers: { Authorization: `Bearer ${token}` }
+          })),
+          import('axios').then(m => m.default.get('http://localhost:5000/api/certificates/recent', {
+            headers: { Authorization: `Bearer ${token}` }
+          }))
+        ]);
+        setStats(statsRes.data.stats);
+        setRecentCerts(certsRes.data.data);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (token) fetchData();
+  }, [token]);
 
   const Sidebar = (
     <>
@@ -272,10 +297,10 @@ const GovernmentDashboard = () => {
               gap: '16px',
               marginBottom: '32px'
             }}>
-              <StatCard title="Total Verifications" value="1.24M" change="+14.5%" icon={Activity} color="#f97316" delay={0.1} />
-              <StatCard title="Active Institutions"  value="2,845"  change="+3.2%"  icon={Users}        color="#10b981" delay={0.15} />
-              <StatCard title="Certificates Issued"  value="8.51M" change="+8.1%"  icon={Layers}       color="#38bdf8" delay={0.2} />
-              <StatCard title="Forgeries Detected"   value="14,204" change="-2.4%" icon={AlertOctagon}  color="#ef4444" delay={0.25} />
+              <StatCard title="Total Verifications" value={stats?.verifications?.total || '0'} change="+14.5%" icon={Activity} color="#f97316" delay={0.1} />
+              <StatCard title="Active Institutions"  value={stats?.institutions?.total || '0'}  change="+3.2%"  icon={Users}        color="#10b981" delay={0.15} />
+              <StatCard title="Certificates Issued"  value={stats?.certificates?.total || '0'} change="+8.1%"  icon={Layers}       color="#38bdf8" delay={0.2} />
+              <StatCard title="Forgeries Detected"   value={stats?.verifications?.notFound || '0'} change="-2.4%" icon={AlertOctagon}  color="#ef4444" delay={0.25} />
             </div>
 
             {/* Chart + Alerts */}
@@ -392,7 +417,7 @@ const GovernmentDashboard = () => {
                   <AlertOctagon size={17} style={{ color: '#ef4444' }} /> Recent Alerts
                 </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {ALERTS.slice(0, 4).map((a, i) => (
+                  {stats?.alerts?.length > 0 ? stats.alerts.map((a, i) => (
                     <motion.div
                       key={i}
                       whileHover={{ x: 5, backgroundColor: 'rgba(239,68,68,0.05)' }}
@@ -408,12 +433,14 @@ const GovernmentDashboard = () => {
                     >
                       <AlertOctagon size={14} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
                       <div>
-                        <p style={{ fontSize: '13px', fontWeight: 500, color: '#fff' }}>{a.cert}</p>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{a.college} · AI: {a.conf}</p>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{a.time}</p>
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: '#fff' }}>{a.certificate?.studentName || 'Suspicious Activity'}</p>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>IP: {a.ipAddress} · Confidence: {a.confidence}%</p>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{new Date(a.createdAt).toLocaleString()}</p>
                       </div>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '20px' }}>No active forgeries detected.</p>
+                  )}
                 </div>
                 <button
                   style={{

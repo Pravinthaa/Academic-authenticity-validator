@@ -49,6 +49,28 @@ const UniversityDashboard = () => {
   });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [recentCerts, setRecentCerts] = useState([]);
+  const [stats, setStats] = useState({ total: 0, thisMonth: 0, pending: 0 });
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (!user?._id) return;
+        const res = await axios.get(`http://localhost:5000/api/certificates/institution/${user._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setRecentCerts(res.data.data);
+        setStats({
+          total: res.data.pagination.total,
+          thisMonth: res.data.data.filter(c => new Date(c.createdAt).getMonth() === new Date().getMonth()).length,
+          pending: 0
+        });
+      } catch (err) {
+        console.error('Failed to fetch institution certificates:', err);
+      }
+    };
+    if (token && user?._id) fetchData();
+  }, [token, user?._id, activeTab]);
 
   const handleSingleSubmit = async (e) => {
     e.preventDefault();
@@ -301,9 +323,9 @@ const UniversityDashboard = () => {
               gap: '20px',
               marginBottom: '32px'
             }}>
-              <StatCard title="Total Issued" value="1,248" icon={GraduationCap} color="#f97316" sub="All-time certificates" />
-              <StatCard title="This Month" value="84" icon={CheckCircle2} color="#10b981" sub="Issued in March 2025" />
-              <StatCard title="Pending Review" value="3" icon={Clock} color="#f59e0b" sub="Awaiting confirmation" />
+              <StatCard title="Total Issued" value={stats.total} icon={GraduationCap} color="#f97316" sub="All-time certificates" />
+              <StatCard title="This Month" value={stats.thisMonth} icon={CheckCircle2} color="#10b981" sub={`Issued in ${new Date().toLocaleString('default', { month: 'long' })} ${new Date().getFullYear()}`} />
+              <StatCard title="Pending Review" value={stats.pending} icon={Clock} color="#f59e0b" sub="Awaiting confirmation" />
             </div>
 
             <div style={{
@@ -346,31 +368,33 @@ const UniversityDashboard = () => {
                     </tr>
                   </thead>
                 <tbody>
-                  {[
-                    { name: 'Anya Sharma', roll: 'CS22-001', course: 'B.Sc CS', year: 2024, grade: '9.2', status: 'Recorded' },
-                    { name: 'Rohan Mehta', roll: 'EC22-014', course: 'B.E EEE', year: 2024, grade: '8.7', status: 'Recorded' },
-                    { name: 'Priya Nair',  roll: 'ME22-031', course: 'B.E Mech', year: 2024, grade: '7.9', status: 'Recorded' },
-                  ].map((r, i) => (
+                  {recentCerts.length > 0 ? recentCerts.map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 500, color: '#fff' }}>{r.name}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.roll}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.course}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.year}</td>
-                      <td style={{ padding: '12px 16px', color: '#fff' }}>{r.grade}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 500, color: '#fff' }}>{r.studentName}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.rollNumber}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.schoolName || 'N/A'}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)' }}>{r.graduationYear || r.sessionAndYear}</td>
+                      <td style={{ padding: '12px 16px', color: '#fff' }}>{r.totalMarks}</td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '12px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          background: 'rgba(16, 185, 129, 0.2)',
-                          color: '#10b981',
+                          background: r.status === 'valid' || r.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                          color: r.status === 'valid' || r.status === 'active' ? '#10b981' : '#ef4444',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px'
                         }}>{r.status}</span>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                        No certificates found. Start by issuing your first certificate!
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

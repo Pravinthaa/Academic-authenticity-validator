@@ -219,7 +219,8 @@ certificateSchema.index({ status: 1 });
 certificateSchema.index({ verificationStatus: 1 });
 certificateSchema.index({ createdAt: -1 });
 
-const Certificate = mongoose.model('Certificate', certificateSchema);
+// Check if model already exists to prevent OverwriteModelError
+const CertificateModel = mongoose.models.Certificate || mongoose.model('Certificate', certificateSchema);
 
 // ============================================================================
 // VERIFICATION LOG SCHEMA & MODEL
@@ -286,7 +287,7 @@ verificationLogSchema.index({ createdAt: -1 });
 verificationLogSchema.index({ updatedAt: -1 });
 verificationLogSchema.index({ createdAt: -1, result: 1 });
 
-const VerificationLog = mongoose.model('VerificationLog', verificationLogSchema);
+const VerificationLog = mongoose.models.VerificationLog || mongoose.model('VerificationLog', verificationLogSchema);
 
 // ============================================================================
 // CERTIFICATE TEMPLATE SCHEMA & MODEL (Optional)
@@ -327,7 +328,7 @@ const certificateTemplateSchema = new mongoose.Schema({
   }
 });
 
-const CertificateTemplate = mongoose.model('CertificateTemplate', certificateTemplateSchema);
+const CertificateTemplate = mongoose.models.CertificateTemplate || mongoose.model('CertificateTemplate', certificateTemplateSchema);
 
 // ============================================================================
 // EXPORTS
@@ -335,7 +336,7 @@ const CertificateTemplate = mongoose.model('CertificateTemplate', certificateTem
 
 module.exports = {
   User,
-  Certificate,
+  Certificate: CertificateModel,
   VerificationLog,
   CertificateTemplate
 };

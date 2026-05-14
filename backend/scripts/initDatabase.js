@@ -12,7 +12,11 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 
 // Import models
-const { User, Certificate, VerificationLog, CertificateTemplate } = require('../models/schemas');
+const User = require('../models/User');
+const Certificate = require('../models/Certificate');
+const VerificationLog = require('../models/VerificationLog');
+// CertificateTemplate not used in current standalone models, if needed it should have its own file
+const CertificateTemplate = null; 
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/academic-validator';
 

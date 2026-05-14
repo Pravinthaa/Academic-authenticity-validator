@@ -29,14 +29,10 @@ app.use('/api/institutions', institutionRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Dev-only routes (DB viewer)
+// Dev-only routes
 if (process.env.NODE_ENV === 'development') {
   const devRoutes = require('./routes/devRoutes');
   app.use('/api/dev', devRoutes);
-  // Serve the visual DB explorer HTML page
-  app.get('/db-explorer', (req, res) => {
-    res.sendFile(path.join(__dirname, 'db-explorer.html'));
-  });
 }
 
 // Serve uploaded files

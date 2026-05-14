@@ -10,7 +10,8 @@ const {
   extractCertificateDetails,
   analyzeCertificate,
   getVerificationResult,
-  listUntamperedMocks
+  listUntamperedMocks,
+  getRecentCertificates
 } = require('../controllers/certificateController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { uploadFile } = require('../middleware/uploadMiddleware');
@@ -68,5 +69,6 @@ router.put('/:id/revoke', protect, authorize('institution', 'admin'), validateCe
 
 // Admin routes
 router.get('/stats/overview', protect, authorize('admin'), getVerificationStats);
+router.get('/recent', protect, getRecentCertificates);
 
 module.exports = router;
